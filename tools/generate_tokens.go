@@ -65,6 +65,7 @@ func fileFromInput(input *Input) *ast.File {
 
 	specs := make([]ast.Spec, 0, tokenCount)
 	values := make([]ast.Expr, 0, tokenCount)
+	goValues := make([]ast.Expr, 0, tokenCount)
 
 	specs = append(specs, &ast.ValueSpec{
 		Names:  []*ast.Ident{ast.NewIdent("Invalid")},
@@ -77,6 +78,11 @@ func fileFromInput(input *Input) *ast.File {
 		Value: "\"<invalid>\"",
 	})
 
+	goValues = append(goValues, &ast.BasicLit{
+		Kind:  token.STRING,
+		Value: goName("Invalid"),
+	})
+
 	for _, name := range dynamic {
 		specs = append(specs, &ast.ValueSpec{
 			Names: []*ast.Ident{ast.NewIdent(exportName(name))},
@@ -84,6 +90,10 @@ func fileFromInput(input *Input) *ast.File {
 		values = append(values, &ast.BasicLit{
 			Kind:  token.STRING,
 			Value: strconv.Quote("<" + name + ">"),
+		})
+		goValues = append(goValues, &ast.BasicLit{
+			Kind:  token.STRING,
+			Value: goName(name),
 		})
 	}
 
@@ -95,6 +105,10 @@ func fileFromInput(input *Input) *ast.File {
 			Kind:  token.STRING,
 			Value: strconv.Quote(name),
 		})
+		goValues = append(goValues, &ast.BasicLit{
+			Kind:  token.STRING,
+			Value: goName(name),
+		})
 	}
 
 	for _, name := range fixedKeys {
@@ -104,6 +118,10 @@ func fileFromInput(input *Input) *ast.File {
 		values = append(values, &ast.BasicLit{
 			Kind:  token.STRING,
 			Value: strconv.Quote(input.Fixed[name]),
+		})
+		goValues = append(goValues, &ast.BasicLit{
+			Kind:  token.STRING,
+			Value: goName(name),
 		})
 	}
 
@@ -163,6 +181,55 @@ func fileFromInput(input *Input) *ast.File {
 		},
 	})
 
+	file.Decls = append(file.Decls, &ast.FuncDecl{
+		Recv: &ast.FieldList{
+			List: []*ast.Field{{
+				Names: []*ast.Ident{ast.NewIdent("t")},
+				Type:  ast.NewIdent("Type"),
+			}},
+		},
+		Name: ast.NewIdent("GoString"),
+		Type: &ast.FuncType{
+			Results: &ast.FieldList{List: []*ast.Field{{Type: ast.NewIdent("string")}}},
+		},
+		Body: &ast.BlockStmt{
+			List: []ast.Stmt{
+				&ast.IfStmt{
+					Cond: &ast.BinaryExpr{
+						X: &ast.BinaryExpr{
+							X:  ast.NewIdent("t"),
+							Op: token.LSS,
+							Y:  &ast.BasicLit{Kind: token.INT, Value: "0"},
+						},
+						Op: token.LOR,
+						Y: &ast.BinaryExpr{
+							X:  ast.NewIdent("t"),
+							Op: token.GTR,
+							Y:  specs[len(specs)-1].(*ast.ValueSpec).Names[0],
+						},
+					},
+					Body: &ast.BlockStmt{
+						List: []ast.Stmt{
+							&ast.AssignStmt{
+								Lhs: []ast.Expr{ast.NewIdent("t")},
+								Tok: token.ASSIGN,
+								Rhs: []ast.Expr{ast.NewIdent("Invalid")},
+							},
+						},
+					},
+				},
+				&ast.ReturnStmt{
+					Results: []ast.Expr{
+						&ast.IndexExpr{
+							X:     ast.NewIdent("goNames"),
+							Index: ast.NewIdent("t"),
+						},
+					},
+				},
+			},
+		},
+	})
+
 	file.Decls = append(file.Decls, &ast.GenDecl{
 		Tok: token.VAR,
 		Specs: []ast.Spec{&ast.ValueSpec{
@@ -170,6 +237,17 @@ func fileFromInput(input *Input) *ast.File {
 			Values: []ast.Expr{&ast.CompositeLit{
 				Type: &ast.ArrayType{Elt: ast.NewIdent("string")},
 				Elts: values,
+			}},
+		}},
+	})
+
+	file.Decls = append(file.Decls, &ast.GenDecl{
+		Tok: token.VAR,
+		Specs: []ast.Spec{&ast.ValueSpec{
+			Names: []*ast.Ident{ast.NewIdent("goNames")},
+			Values: []ast.Expr{&ast.CompositeLit{
+				Type: &ast.ArrayType{Elt: ast.NewIdent("string")},
+				Elts: goValues,
 			}},
 		}},
 	})
@@ -227,6 +305,10 @@ func fileFromInput(input *Input) *ast.File {
 	})
 
 	return file
+}
+
+func goName(name string) string {
+	return fmt.Sprintf("\"token.%s\"", exportName(name))
 }
 
 func exportName(name string) string {

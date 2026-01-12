@@ -21,8 +21,15 @@ func (t Type) String() string {
 	}
 	return names[t]
 }
+func (t Type) GoString() string {
+	if t < 0 || t > Plus {
+		t = Invalid
+	}
+	return goNames[t]
+}
 
 var names = []string{"<invalid>", "<identifier>", "<integer>", "<string>", "const", "func", "let", "+"}
+var goNames = []string{"token.Invalid", "token.Identifier", "token.Integer", "token.String", "token.Const", "token.Func", "token.Let", "token.Plus"}
 
 type TrieNode struct {
 	Rune     rune
