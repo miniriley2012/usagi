@@ -189,11 +189,11 @@ func (s *Scanner) rewind() {
 }
 
 func isIdentifierStart(r rune) bool {
-	return r == '@' || unicode.In(r, &ID_Start)
+	return r == '@' || r == '_' || unicode.In(r, &ID_Start)
 }
 
 func isIdentifierContinue(r rune) bool {
-	return unicode.In(r, &ID_Continue)
+	return r == '_' || unicode.In(r, &ID_Continue)
 }
 
 func isDigit(r rune) bool {
