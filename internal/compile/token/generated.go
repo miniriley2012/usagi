@@ -10,26 +10,33 @@ const (
 	Integer
 	String
 	Const
+	Export
 	Func
 	Let
+	Assign
+	CloseBrace
+	CloseParen
+	OpenBrace
+	OpenParen
 	Plus
+	Semicolon
 )
 
 func (t Type) String() string {
-	if t < 0 || t > Plus {
+	if t < 0 || t > Semicolon {
 		t = Invalid
 	}
 	return names[t]
 }
 func (t Type) GoString() string {
-	if t < 0 || t > Plus {
+	if t < 0 || t > Semicolon {
 		t = Invalid
 	}
 	return goNames[t]
 }
 
-var names = []string{"<invalid>", "<identifier>", "<integer>", "<string>", "const", "func", "let", "+"}
-var goNames = []string{"token.Invalid", "token.Identifier", "token.Integer", "token.String", "token.Const", "token.Func", "token.Let", "token.Plus"}
+var names = []string{"<invalid>", "<identifier>", "<integer>", "<string>", "const", "export", "func", "let", "=", "}", ")", "{", "(", "+", ";"}
+var goNames = []string{"token.Invalid", "token.Identifier", "token.Integer", "token.String", "token.Const", "token.Export", "token.Func", "token.Let", "token.Assign", "token.CloseBrace", "token.CloseParen", "token.OpenBrace", "token.OpenParen", "token.Plus", "token.Semicolon"}
 
 type TrieNode struct {
 	Rune     rune
@@ -37,4 +44,4 @@ type TrieNode struct {
 	Children []*TrieNode
 }
 
-var Fixed = &TrieNode{'\x00', Invalid, []*TrieNode{{'+', Plus, nil}, {'c', Invalid, []*TrieNode{{'o', Invalid, []*TrieNode{{'n', Invalid, []*TrieNode{{'s', Invalid, []*TrieNode{{'t', Const, nil}}}}}}}}}, {'f', Invalid, []*TrieNode{{'u', Invalid, []*TrieNode{{'n', Invalid, []*TrieNode{{'c', Func, nil}}}}}}}, {'l', Invalid, []*TrieNode{{'e', Invalid, []*TrieNode{{'t', Let, nil}}}}}}}
+var Fixed = &TrieNode{'\x00', Invalid, []*TrieNode{{'(', OpenParen, nil}, {')', CloseParen, nil}, {'+', Plus, nil}, {';', Semicolon, nil}, {'=', Assign, nil}, {'c', Invalid, []*TrieNode{{'o', Invalid, []*TrieNode{{'n', Invalid, []*TrieNode{{'s', Invalid, []*TrieNode{{'t', Const, nil}}}}}}}}}, {'e', Invalid, []*TrieNode{{'x', Invalid, []*TrieNode{{'p', Invalid, []*TrieNode{{'o', Invalid, []*TrieNode{{'r', Invalid, []*TrieNode{{'t', Export, nil}}}}}}}}}}}, {'f', Invalid, []*TrieNode{{'u', Invalid, []*TrieNode{{'n', Invalid, []*TrieNode{{'c', Func, nil}}}}}}}, {'l', Invalid, []*TrieNode{{'e', Invalid, []*TrieNode{{'t', Let, nil}}}}}, {'{', OpenBrace, nil}, {'}', CloseBrace, nil}}}
