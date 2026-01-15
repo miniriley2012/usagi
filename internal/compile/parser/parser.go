@@ -373,6 +373,9 @@ func (p *Parser) next() {
 		panic(err)
 	}
 	p.t = t
+	if p.t.Type == token.Comment {
+		p.next()
+	}
 }
 
 func New(scn Scanner) *Parser {

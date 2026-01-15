@@ -6,6 +6,7 @@ type Type int
 
 const (
 	Invalid Type = iota
+	Comment
 	Identifier
 	Integer
 	String
@@ -46,8 +47,8 @@ func (t Type) GoString() string {
 	return goNames[t]
 }
 
-var names = []string{"<invalid>", "<identifier>", "<integer>", "<string>", "const", "export", "func", "if", "let", "return", "=", "*", "}", "]", ")", ":", ",", ".", "...", "<", "-", "{", "[", "(", "+", ";"}
-var goNames = []string{"token.Invalid", "token.Identifier", "token.Integer", "token.String", "token.Const", "token.Export", "token.Func", "token.If", "token.Let", "token.Return", "token.Assign", "token.Asterisk", "token.CloseBrace", "token.CloseBracket", "token.CloseParen", "token.Colon", "token.Comma", "token.Dot", "token.Ellipses", "token.Less", "token.Minus", "token.OpenBrace", "token.OpenBracket", "token.OpenParen", "token.Plus", "token.Semicolon"}
+var names = []string{"<invalid>", "<comment>", "<identifier>", "<integer>", "<string>", "const", "export", "func", "if", "let", "return", "=", "*", "}", "]", ")", ":", ",", ".", "...", "<", "-", "{", "[", "(", "+", ";"}
+var goNames = []string{"token.Invalid", "token.Comment", "token.Identifier", "token.Integer", "token.String", "token.Const", "token.Export", "token.Func", "token.If", "token.Let", "token.Return", "token.Assign", "token.Asterisk", "token.CloseBrace", "token.CloseBracket", "token.CloseParen", "token.Colon", "token.Comma", "token.Dot", "token.Ellipses", "token.Less", "token.Minus", "token.OpenBrace", "token.OpenBracket", "token.OpenParen", "token.Plus", "token.Semicolon"}
 
 type TrieNode struct {
 	Rune     rune

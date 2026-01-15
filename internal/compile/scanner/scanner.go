@@ -36,6 +36,21 @@ func (s *Scanner) Scan() (*token.Token, error) {
 		return s.string()
 	} else if isDigit(r) {
 		return s.integer()
+	} else if r == '/' {
+		r, err = s.next()
+		if err != nil {
+			return nil, err
+		}
+		if r == '/' {
+			for r != '\n' {
+				r, err = s.next()
+				if err != nil {
+					return nil, err
+				}
+			}
+			return s.token(token.Comment), nil
+		}
+		panic("TODO")
 	}
 
 	node := token.Fixed
