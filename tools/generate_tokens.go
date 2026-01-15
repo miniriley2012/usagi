@@ -339,7 +339,7 @@ outer:
 	for _, r := range key {
 		for i := range node.Children {
 			c := node.Children[i]
-			if r == node.Rune {
+			if r == c.Rune {
 				node = c
 				continue outer
 			}
