@@ -184,3 +184,14 @@ func (*VarArgExpr) End() token.Pos { panic("TODO") }
 
 func (*VarArgExpr) astNode() {}
 func (*VarArgExpr) astExpr() {}
+
+type IfExpr struct {
+	Cond  Expr
+	Block *BlockExpr
+}
+
+func (*IfExpr) Pos() token.Pos { panic("TODO") }
+func (*IfExpr) End() token.Pos { panic("TODO") }
+
+func (*IfExpr) astNode() {}
+func (*IfExpr) astExpr() {}
