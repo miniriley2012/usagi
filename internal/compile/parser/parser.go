@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 
 	"codeberg.org/rileyq/usagi/internal/compile/ast"
 	"codeberg.org/rileyq/usagi/internal/compile/scanner"
@@ -11,21 +12,31 @@ import (
 )
 
 type Parser struct {
-	scn Scanner
-	t   *token.Token
+	scn  Scanner
+	t    *token.Token
+	errs []error
 }
 
-func (p *Parser) Parse(name string) *ast.Module {
+func (p *Parser) Parse(name string) (*ast.Module, error) {
 	p.next()
 
 	var bindings []*ast.Binding
 
 	for p.t != nil {
-		bindings = append(bindings, p.binding())
+		binding := p.binding()
+		if binding != nil {
+			bindings = append(bindings, binding)
+		}
 	}
 
-	return &ast.Module{Name: name, Bindings: bindings}
+	return &ast.Module{Name: name, Bindings: bindings}, p.wrappedError()
 }
+
+func (p *Parser) wrappedError() error {
+	return errors.Join(p.errs...)
+}
+
+var topLevelRecoveryTokens = []token.Type{token.Semicolon}
 
 func (p *Parser) binding() *ast.Binding {
 	var mode ast.BindingMode
@@ -67,7 +78,14 @@ func (p *Parser) binding() *ast.Binding {
 	case token.Func:
 		return p.funcBinding(mode | ast.ModeFunc)
 	default:
-		panic("TODO")
+		var end token.Pos
+		problem := p.t
+		recovered := p.recover(topLevelRecoveryTokens)
+		if recovered != nil {
+			end = recovered.End
+		}
+		p.error(NewParseError(problem.Pos, end, fmt.Errorf("expected declaration but found %q", problem.Type)))
+		return nil
 	}
 }
 
@@ -99,6 +117,9 @@ func (p *Parser) funcBinding(mode ast.BindingMode) *ast.Binding {
 	p.expect(token.Func)
 
 	name := p.identifier()
+	if name == nil {
+		return nil
+	}
 
 	fn := p.funcBody()
 
@@ -279,7 +300,8 @@ func (p *Parser) unaryOperand() ast.Expr {
 	case token.If:
 		return p.ifExpr()
 	default:
-		panic(fmt.Errorf("expected unary operand but found %q", p.t.Type))
+		p.error(NewParseError(p.t.Pos, p.t.End, fmt.Errorf("expected unary operand but found %q", p.t.Type)))
+		return &ast.BadExpr{}
 	}
 }
 
@@ -332,6 +354,9 @@ func (p *Parser) string() *ast.Literal {
 
 func (p *Parser) identifier() *ast.Identifier {
 	tok := p.expect(token.Identifier)
+	if tok == nil {
+		return nil
+	}
 	return &ast.Identifier{
 		NamePos: tok.Pos,
 		NameEnd: tok.End,
@@ -347,7 +372,11 @@ func (p *Parser) expect(tok token.Type) *token.Token {
 	if t := p.accept(tok); t != nil {
 		return t
 	}
-	panic(fmt.Errorf("Expected %q but found %q", tok, p.t.Type))
+
+	p.error(NewParseError(p.t.Pos, p.t.End, fmt.Errorf("Expected %q but found %q", tok, p.t.Type)))
+	p.recover(topLevelRecoveryTokens)
+
+	return nil
 }
 
 func (p *Parser) accept(tok token.Type) *token.Token {
@@ -378,6 +407,22 @@ func (p *Parser) next() {
 	}
 }
 
+func (p *Parser) error(err error) {
+	p.errs = append(p.errs, err)
+}
+
+func (p *Parser) recover(recoveryTokens []token.Type) *token.Token {
+	for !slices.Contains(recoveryTokens, p.t.Type) {
+		p.next()
+		if p.t == nil {
+			return nil
+		}
+	}
+	t := p.t
+	p.next()
+	return t
+}
+
 func New(scn Scanner) *Parser {
 	return &Parser{scn: scn}
 }
@@ -388,4 +433,21 @@ func NewFromReader(rd io.Reader) *Parser {
 
 type Scanner interface {
 	Scan() (*token.Token, error)
+}
+
+type ParseError struct {
+	pos, end token.Pos
+	err      error
+}
+
+func NewParseError(pos, end token.Pos, err error) *ParseError {
+	return &ParseError{pos, end, err}
+}
+
+func (err *ParseError) Error() string {
+	return fmt.Sprintf("parse error: %v", err.err)
+}
+
+func (err *ParseError) Unwrap() error {
+	return err.err
 }

@@ -12,18 +12,25 @@ import (
 const src = `
 const std = @import("std");
 
-// func add(a: i32, b: i32) i32 {
-//  return a + b;
-// }
+const std = @import("std");
 
-// func main() void {
-// 	std.print(add(1, 2));
-// }
+// Adds two i32 values
+func add(a: i32, b: i32) i32 {
+	return a + b;
+}
+
+func main() void {
+	std.print(add(1, 2));
+}
 `
 
 func TestParser(t *testing.T) {
 	p := NewFromReader(bytes.NewReader([]byte(src)))
-	module := p.Parse("main")
+	module, err := p.Parse("main")
+	if err != nil {
+		t.Log(err)
+		t.Fail()
+	}
 	var b strings.Builder
 	Node(&b, module)
 	t.Log(b.String())

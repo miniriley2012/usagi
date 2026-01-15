@@ -195,3 +195,11 @@ func (*IfExpr) End() token.Pos { panic("TODO") }
 
 func (*IfExpr) astNode() {}
 func (*IfExpr) astExpr() {}
+
+type BadExpr struct{}
+
+func (*BadExpr) Pos() token.Pos { panic("TODO") }
+func (*BadExpr) End() token.Pos { panic("TODO") }
+
+func (*BadExpr) astNode() {}
+func (*BadExpr) astExpr() {}
