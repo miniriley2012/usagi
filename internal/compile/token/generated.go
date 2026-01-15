@@ -12,17 +12,20 @@ const (
 	Const
 	Export
 	Func
+	If
 	Let
 	Return
 	Assign
 	Asterisk
 	CloseBrace
+	CloseBracket
 	CloseParen
 	Colon
 	Comma
 	Dot
 	Ellipses
 	OpenBrace
+	OpenBracket
 	OpenParen
 	Plus
 	Semicolon
@@ -41,8 +44,8 @@ func (t Type) GoString() string {
 	return goNames[t]
 }
 
-var names = []string{"<invalid>", "<identifier>", "<integer>", "<string>", "const", "export", "func", "let", "return", "=", "*", "}", ")", ":", ",", ".", "...", "{", "(", "+", ";"}
-var goNames = []string{"token.Invalid", "token.Identifier", "token.Integer", "token.String", "token.Const", "token.Export", "token.Func", "token.Let", "token.Return", "token.Assign", "token.Asterisk", "token.CloseBrace", "token.CloseParen", "token.Colon", "token.Comma", "token.Dot", "token.Ellipses", "token.OpenBrace", "token.OpenParen", "token.Plus", "token.Semicolon"}
+var names = []string{"<invalid>", "<identifier>", "<integer>", "<string>", "const", "export", "func", "if", "let", "return", "=", "*", "}", "]", ")", ":", ",", ".", "...", "{", "[", "(", "+", ";"}
+var goNames = []string{"token.Invalid", "token.Identifier", "token.Integer", "token.String", "token.Const", "token.Export", "token.Func", "token.If", "token.Let", "token.Return", "token.Assign", "token.Asterisk", "token.CloseBrace", "token.CloseBracket", "token.CloseParen", "token.Colon", "token.Comma", "token.Dot", "token.Ellipses", "token.OpenBrace", "token.OpenBracket", "token.OpenParen", "token.Plus", "token.Semicolon"}
 
 type TrieNode struct {
 	Rune     rune
@@ -50,4 +53,4 @@ type TrieNode struct {
 	Children []*TrieNode
 }
 
-var Fixed = &TrieNode{'\x00', Invalid, []*TrieNode{{'(', OpenParen, nil}, {')', CloseParen, nil}, {'*', Asterisk, nil}, {'+', Plus, nil}, {',', Comma, nil}, {'.', Dot, nil}, {'.', Invalid, []*TrieNode{{'.', Invalid, []*TrieNode{{'.', Ellipses, nil}}}}}, {':', Colon, nil}, {';', Semicolon, nil}, {'=', Assign, nil}, {'c', Invalid, []*TrieNode{{'o', Invalid, []*TrieNode{{'n', Invalid, []*TrieNode{{'s', Invalid, []*TrieNode{{'t', Const, nil}}}}}}}}}, {'e', Invalid, []*TrieNode{{'x', Invalid, []*TrieNode{{'p', Invalid, []*TrieNode{{'o', Invalid, []*TrieNode{{'r', Invalid, []*TrieNode{{'t', Export, nil}}}}}}}}}}}, {'f', Invalid, []*TrieNode{{'u', Invalid, []*TrieNode{{'n', Invalid, []*TrieNode{{'c', Func, nil}}}}}}}, {'l', Invalid, []*TrieNode{{'e', Invalid, []*TrieNode{{'t', Let, nil}}}}}, {'r', Invalid, []*TrieNode{{'e', Invalid, []*TrieNode{{'t', Invalid, []*TrieNode{{'u', Invalid, []*TrieNode{{'r', Invalid, []*TrieNode{{'n', Return, nil}}}}}}}}}}}, {'{', OpenBrace, nil}, {'}', CloseBrace, nil}}}
+var Fixed = &TrieNode{'\x00', Invalid, []*TrieNode{{'(', OpenParen, nil}, {')', CloseParen, nil}, {'*', Asterisk, nil}, {'+', Plus, nil}, {',', Comma, nil}, {'.', Dot, nil}, {'.', Invalid, []*TrieNode{{'.', Invalid, []*TrieNode{{'.', Ellipses, nil}}}}}, {':', Colon, nil}, {';', Semicolon, nil}, {'=', Assign, nil}, {'[', OpenBracket, nil}, {']', CloseBracket, nil}, {'c', Invalid, []*TrieNode{{'o', Invalid, []*TrieNode{{'n', Invalid, []*TrieNode{{'s', Invalid, []*TrieNode{{'t', Const, nil}}}}}}}}}, {'e', Invalid, []*TrieNode{{'x', Invalid, []*TrieNode{{'p', Invalid, []*TrieNode{{'o', Invalid, []*TrieNode{{'r', Invalid, []*TrieNode{{'t', Export, nil}}}}}}}}}}}, {'f', Invalid, []*TrieNode{{'u', Invalid, []*TrieNode{{'n', Invalid, []*TrieNode{{'c', Func, nil}}}}}}}, {'i', Invalid, []*TrieNode{{'f', If, nil}}}, {'l', Invalid, []*TrieNode{{'e', Invalid, []*TrieNode{{'t', Let, nil}}}}}, {'r', Invalid, []*TrieNode{{'e', Invalid, []*TrieNode{{'t', Invalid, []*TrieNode{{'u', Invalid, []*TrieNode{{'r', Invalid, []*TrieNode{{'n', Return, nil}}}}}}}}}}}, {'{', OpenBrace, nil}, {'}', CloseBrace, nil}}}
