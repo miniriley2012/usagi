@@ -50,6 +50,11 @@ type Binding struct {
 	Value Expr
 }
 
+func (b *Binding) Pos() token.Pos { return b.Name.Pos() }
+func (b *Binding) End() token.Pos { panic("TODO") }
+
+func (*Binding) astNode() {}
+
 type Identifier struct {
 	NamePos token.Pos
 	NameEnd token.Pos
