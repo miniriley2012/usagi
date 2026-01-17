@@ -12,15 +12,26 @@ import (
 const src = `
 const std = @import("std");
 
-const std = @import("std");
+const TwoInts = struct (
+	a: i32,
+	b: i32,
+);
+
+const Drop = trait {
+	func drop(self: Self) void;
+};
+
+impl TwoInts(Drop) {
+	func drop(self: TwoInts) void {}
+}
 
 // Adds two i32 values
-func add(a: i32, b: i32) i32 {
-	return a + b;
+func add(arg: TwoInts) i32 {
+	return arg.a + arg.b;
 }
 
 func main() void {
-	std.print(add(1, 2));
+	std.print(add(TwoInts(a: 1, b: 2)));
 }
 `
 
@@ -44,10 +55,32 @@ func Node(w io.Writer, node ast.Node) {
 }
 
 func module(w io.Writer, module *ast.Module) {
-	for _, b := range module.Bindings {
-		binding(w, b)
+	for _, b := range module.Decls {
+		decl(w, b)
 		io.WriteString(w, "\n")
 	}
+}
+
+func decl(w io.Writer, decl ast.Decl) {
+	switch decl := decl.(type) {
+	case *ast.Binding:
+		binding(w, decl)
+	case *ast.ImplDecl:
+		impl(w, decl)
+	}
+}
+
+func impl(w io.Writer, impl *ast.ImplDecl) {
+	io.WriteString(w, "impl ")
+	expr(w, impl.Type)
+	io.WriteString(w, "(")
+	expr(w, impl.Trait)
+	io.WriteString(w, ") ")
+	io.WriteString(w, "{\n")
+	for _, def := range impl.Definitions {
+		binding(w, def)
+	}
+	io.WriteString(w, "}\n")
 }
 
 func binding(w io.Writer, binding *ast.Binding) {
@@ -105,6 +138,27 @@ func expr(w io.Writer, x ast.Expr) {
 		expr(w, x.Base)
 		io.WriteString(w, ".")
 		io.WriteString(w, x.Member.Name)
+	case *ast.StructExpr:
+		io.WriteString(w, "struct(")
+		for i, member := range x.Members {
+			expr(w, member.Name)
+			io.WriteString(w, ": ")
+			expr(w, member.Type)
+			if i < len(x.Members)-1 {
+				io.WriteString(w, ", ")
+			}
+		}
+		io.WriteString(w, ")")
+	case *ast.NamedArg:
+		expr(w, x.Name)
+		io.WriteString(w, ": ")
+		expr(w, x.Value)
+	case *ast.TraitExpr:
+		io.WriteString(w, "trait {\n")
+		for _, member := range x.Members {
+			binding(w, member)
+		}
+		io.WriteString(w, "}")
 	}
 }
 
@@ -130,8 +184,12 @@ func funcBody(w io.Writer, fexpr *ast.FuncExpr) {
 	}
 	io.WriteString(w, ") ")
 	expr(w, fexpr.ReturnType)
-	io.WriteString(w, " ")
-	blockExpr(w, fexpr.Body)
+	if fexpr.Body != nil {
+		io.WriteString(w, " ")
+		blockExpr(w, fexpr.Body)
+	} else {
+		io.WriteString(w, ";")
+	}
 	io.WriteString(w, "\n")
 }
 

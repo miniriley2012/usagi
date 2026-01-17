@@ -21,9 +21,15 @@ type Stmt interface {
 	astStmt()
 }
 
+type Decl interface {
+	Node
+
+	astDecl()
+}
+
 type Module struct {
-	Name     string
-	Bindings []*Binding
+	Name  string
+	Decls []Decl
 }
 
 func (m *Module) Pos() token.Pos { return token.NoPos }
@@ -54,6 +60,7 @@ func (b *Binding) Pos() token.Pos { return b.Name.Pos() }
 func (b *Binding) End() token.Pos { panic("TODO") }
 
 func (*Binding) astNode() {}
+func (*Binding) astDecl() {}
 
 type Identifier struct {
 	NamePos token.Pos
@@ -208,3 +215,56 @@ func (*BadExpr) End() token.Pos { panic("TODO") }
 
 func (*BadExpr) astNode() {}
 func (*BadExpr) astExpr() {}
+
+type StructExpr struct {
+	Members []*Field
+}
+
+func (*StructExpr) Pos() token.Pos { panic("TODO") }
+func (*StructExpr) End() token.Pos { panic("TODO") }
+
+func (*StructExpr) astNode() {}
+func (*StructExpr) astExpr() {}
+
+type Field struct {
+	Name *Identifier
+	Type Expr
+}
+
+func (*Field) Pos() token.Pos { panic("TODO") }
+func (*Field) End() token.Pos { panic("TODO") }
+
+func (*Field) astNode() {}
+
+type NamedArg struct {
+	Name  *Identifier
+	Value Expr
+}
+
+func (*NamedArg) Pos() token.Pos { panic("TODO") }
+func (*NamedArg) End() token.Pos { panic("TODO") }
+
+func (*NamedArg) astNode() {}
+func (*NamedArg) astExpr() {}
+
+type TraitExpr struct {
+	Members []*Binding
+}
+
+func (*TraitExpr) Pos() token.Pos { panic("TODO") }
+func (*TraitExpr) End() token.Pos { panic("TODO") }
+
+func (*TraitExpr) astNode() {}
+func (*TraitExpr) astExpr() {}
+
+type ImplDecl struct {
+	Type        Expr
+	Trait       Expr
+	Definitions []*Binding
+}
+
+func (*ImplDecl) Pos() token.Pos { panic("TODO") }
+func (*ImplDecl) End() token.Pos { panic("TODO") }
+
+func (*ImplDecl) astNode() {}
+func (*ImplDecl) astDecl() {}

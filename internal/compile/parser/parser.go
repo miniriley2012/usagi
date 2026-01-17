@@ -20,16 +20,16 @@ type Parser struct {
 func (p *Parser) Parse(name string) (*ast.Module, error) {
 	p.next()
 
-	var bindings []*ast.Binding
+	var decls []ast.Decl
 
 	for p.t != nil {
-		binding := p.binding()
-		if binding != nil {
-			bindings = append(bindings, binding)
+		decl := p.decl()
+		if decl != nil {
+			decls = append(decls, decl)
 		}
 	}
 
-	return &ast.Module{Name: name, Bindings: bindings}, p.wrappedError()
+	return &ast.Module{Name: name, Decls: decls}, p.wrappedError()
 }
 
 func (p *Parser) wrappedError() error {
@@ -37,6 +37,43 @@ func (p *Parser) wrappedError() error {
 }
 
 var topLevelRecoveryTokens = []token.Type{token.Semicolon}
+
+func (p *Parser) decl() ast.Decl {
+	switch p.t.Type {
+	case token.Export, token.Const, token.Let, token.Func:
+		return p.binding()
+	case token.Impl:
+		return p.impl()
+	}
+	panic("TODO")
+}
+
+func (p *Parser) impl() *ast.ImplDecl {
+	p.expect(token.Impl)
+
+	typ := p.expr2(nil, token.PrecedenceCall)
+	p.expect(token.OpenParen)
+	trait := p.expr()
+	p.expect(token.CloseParen)
+
+	var defs []*ast.Binding
+	p.expect(token.OpenBrace)
+	for {
+		if p.accept(token.CloseBrace) != nil {
+			break
+		}
+		binding := p.binding()
+		if binding != nil {
+			defs = append(defs, binding)
+		}
+	}
+
+	return &ast.ImplDecl{
+		Type:        typ,
+		Trait:       trait,
+		Definitions: defs,
+	}
+}
 
 func (p *Parser) binding() *ast.Binding {
 	var mode ast.BindingMode
@@ -154,6 +191,8 @@ func (p *Parser) funcBody() *ast.FuncExpr {
 
 	if p.t.Type == token.OpenBrace {
 		body = p.blockExpr()
+	} else {
+		p.expect(token.Semicolon)
 	}
 
 	return &ast.FuncExpr{
@@ -257,7 +296,7 @@ func (p *Parser) call(base ast.Expr) ast.Expr {
 			break
 		}
 
-		args = append(args, p.expr())
+		args = append(args, p.argument())
 
 		if p.accept(token.CloseParen) != nil {
 			break
@@ -272,6 +311,21 @@ func (p *Parser) call(base ast.Expr) ast.Expr {
 		Base: base,
 		Args: args,
 	}
+}
+
+func (p *Parser) argument() ast.Expr {
+	if p.t.Type == token.Identifier {
+		ident := p.identifier()
+		if p.accept(token.Colon) != nil {
+			value := p.expr()
+			return &ast.NamedArg{
+				Name:  ident,
+				Value: value,
+			}
+		}
+		return p.expr2(ident, token.PrecedenceNone)
+	}
+	return p.expr()
 }
 
 func (p *Parser) unaryOperand() ast.Expr {
@@ -299,9 +353,63 @@ func (p *Parser) unaryOperand() ast.Expr {
 		return p.sliceOrManyPointer()
 	case token.If:
 		return p.ifExpr()
+	case token.Struct:
+		return p.structExpr()
+	case token.Trait:
+		return p.traitExpr()
 	default:
 		p.error(NewParseError(p.t.Pos, p.t.End, fmt.Errorf("expected unary operand but found %q", p.t.Type)))
 		return &ast.BadExpr{}
+	}
+}
+
+func (p *Parser) traitExpr() *ast.TraitExpr {
+	p.expect(token.Trait)
+	var members []*ast.Binding
+	p.expect(token.OpenBrace)
+	for {
+		if p.accept(token.CloseBrace) != nil {
+			break
+		}
+		binding := p.binding()
+		if binding != nil {
+			members = append(members, binding)
+		}
+	}
+	return &ast.TraitExpr{
+		Members: members,
+	}
+}
+
+func (p *Parser) structExpr() *ast.StructExpr {
+	p.expect(token.Struct)
+	members := p.fields()
+	return &ast.StructExpr{Members: members}
+}
+
+func (p *Parser) fields() []*ast.Field {
+	var fields []*ast.Field
+	p.expect(token.OpenParen)
+	for {
+		if p.accept(token.CloseParen) != nil {
+			break
+		}
+		fields = append(fields, p.field())
+		if p.accept(token.CloseParen) != nil {
+			break
+		}
+		p.expect(token.Comma)
+	}
+	return fields
+}
+
+func (p *Parser) field() *ast.Field {
+	name := p.identifier()
+	p.expect(token.Colon)
+	typ := p.expr()
+	return &ast.Field{
+		Name: name,
+		Type: typ,
 	}
 }
 
