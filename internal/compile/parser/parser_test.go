@@ -7,19 +7,20 @@ import (
 	"testing"
 
 	"codeberg.org/rileyq/usagi/internal/compile/ast"
+	"codeberg.org/rileyq/usagi/internal/compile/token"
 )
 
 const src = `
 const std = @import("std");
 
-const TwoInts = struct (
+struct TwoInts (
 	a: i32,
 	b: i32,
 );
 
-const Drop = trait {
+trait Drop {
 	func drop(self: Self) void;
-};
+}
 
 impl TwoInts(Drop) {
 	func drop(self: TwoInts) void {}
@@ -83,37 +84,45 @@ func impl(w io.Writer, impl *ast.ImplDecl) {
 	io.WriteString(w, "}\n")
 }
 
-func binding(w io.Writer, binding *ast.Binding) {
+func binding(w io.Writer, b *ast.Binding) {
 	var declarators []string
-	if binding.Mode.Export() {
+	if b.Mode.Export() {
 		declarators = append(declarators, "export")
 	}
-	if binding.Mode.Const() {
+	if b.Mode.Const() {
 		declarators = append(declarators, "const")
 	}
-	if binding.Mode.Func() {
-		declarators = append(declarators, "func")
-	} else {
-		declarators = append(declarators, "let")
+	if b.Token != token.Const {
+		declarators = append(declarators, b.Token.String())
 	}
-	declarators = append(declarators, binding.Name.Name)
+	declarators = append(declarators, b.Name.Name)
 
 	io.WriteString(w, strings.Join(declarators, " "))
 
-	if !binding.Mode.Func() {
-		if binding.Type != nil {
+	switch b.Token {
+	case token.Func:
+		funcBody(w, b.Value.(*ast.FuncExpr))
+	case token.Struct:
+		fields(w, b.Value.(*ast.StructExpr).Members)
+		io.WriteString(w, ";\n")
+	case token.Trait:
+		io.WriteString(w, " {\n")
+		for _, member := range b.Value.(*ast.TraitExpr).Members {
+			binding(w, member)
+		}
+		io.WriteString(w, "}\n")
+	default:
+		if b.Type != nil {
 			io.WriteString(w, ": ")
-			expr(w, binding.Type)
+			expr(w, b.Type)
 		}
 
-		if binding.Value != nil {
+		if b.Value != nil {
 			io.WriteString(w, " = ")
-			expr(w, binding.Value)
+			expr(w, b.Value)
 		}
 
 		io.WriteString(w, ";\n")
-	} else {
-		funcBody(w, binding.Value.(*ast.FuncExpr))
 	}
 }
 
@@ -139,16 +148,8 @@ func expr(w io.Writer, x ast.Expr) {
 		io.WriteString(w, ".")
 		io.WriteString(w, x.Member.Name)
 	case *ast.StructExpr:
-		io.WriteString(w, "struct(")
-		for i, member := range x.Members {
-			expr(w, member.Name)
-			io.WriteString(w, ": ")
-			expr(w, member.Type)
-			if i < len(x.Members)-1 {
-				io.WriteString(w, ", ")
-			}
-		}
-		io.WriteString(w, ")")
+		io.WriteString(w, "struct")
+		fields(w, x.Members)
 	case *ast.NamedArg:
 		expr(w, x.Name)
 		io.WriteString(w, ": ")
@@ -160,6 +161,19 @@ func expr(w io.Writer, x ast.Expr) {
 		}
 		io.WriteString(w, "}")
 	}
+}
+
+func fields(w io.Writer, fields []*ast.Field) {
+	io.WriteString(w, "(")
+	for i, field := range fields {
+		expr(w, field.Name)
+		io.WriteString(w, ": ")
+		expr(w, field.Type)
+		if i < len(fields)-1 {
+			io.WriteString(w, ", ")
+		}
+	}
+	io.WriteString(w, ")")
 }
 
 func call(w io.Writer, cexpr *ast.CallExpr) {

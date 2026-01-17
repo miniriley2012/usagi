@@ -42,14 +42,13 @@ type BindingMode int
 const (
 	ModeExport BindingMode = 1 << iota
 	ModeConst
-	ModeFunc
 )
 
 func (m BindingMode) Export() bool { return m&ModeExport != 0 }
 func (m BindingMode) Const() bool  { return m&ModeConst != 0 }
-func (m BindingMode) Func() bool   { return m&ModeFunc != 0 }
 
 type Binding struct {
+	Token token.Type
 	Mode  BindingMode
 	Name  *Identifier
 	Type  Expr

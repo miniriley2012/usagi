@@ -40,7 +40,7 @@ var topLevelRecoveryTokens = []token.Type{token.Semicolon}
 
 func (p *Parser) decl() ast.Decl {
 	switch p.t.Type {
-	case token.Export, token.Const, token.Let, token.Func:
+	case token.Export, token.Const, token.Let, token.Func, token.Struct, token.Trait:
 		return p.binding()
 	case token.Impl:
 		return p.impl()
@@ -102,6 +102,7 @@ func (p *Parser) binding() *ast.Binding {
 		p.expect(token.Semicolon)
 
 		return &ast.Binding{
+			Token: token.Const,
 			Mode:  mode,
 			Name:  name,
 			Type:  typ,
@@ -113,7 +114,11 @@ func (p *Parser) binding() *ast.Binding {
 	case token.Let:
 		return p.letBinding(mode)
 	case token.Func:
-		return p.funcBinding(mode | ast.ModeFunc)
+		return p.funcBinding(mode)
+	case token.Struct:
+		return p.structBinding(mode)
+	case token.Trait:
+		return p.traitBinding(mode)
 	default:
 		var end token.Pos
 		problem := p.t
@@ -123,6 +128,33 @@ func (p *Parser) binding() *ast.Binding {
 		}
 		p.error(NewParseError(problem.Pos, end, fmt.Errorf("expected declaration but found %q", problem.Type)))
 		return nil
+	}
+}
+
+func (p *Parser) traitBinding(mode ast.BindingMode) *ast.Binding {
+	p.expect(token.Trait)
+	name := p.identifier()
+	members := p.traitMembers()
+	return &ast.Binding{
+		Token: token.Trait,
+		Mode:  mode,
+		Name:  name,
+		Type:  nil,
+		Value: &ast.TraitExpr{Members: members},
+	}
+}
+
+func (p *Parser) structBinding(mode ast.BindingMode) *ast.Binding {
+	p.expect(token.Struct)
+	name := p.identifier()
+	members := p.fields()
+	p.expect(token.Semicolon)
+	return &ast.Binding{
+		Token: token.Struct,
+		Mode:  mode,
+		Name:  name,
+		Type:  nil,
+		Value: &ast.StructExpr{Members: members},
 	}
 }
 
@@ -143,6 +175,7 @@ func (p *Parser) letBinding(mode ast.BindingMode) *ast.Binding {
 	}
 
 	return &ast.Binding{
+		Token: token.Let,
 		Mode:  mode,
 		Name:  name,
 		Type:  typ,
@@ -161,6 +194,7 @@ func (p *Parser) funcBinding(mode ast.BindingMode) *ast.Binding {
 	fn := p.funcBody()
 
 	return &ast.Binding{
+		Token: token.Func,
 		Mode:  mode,
 		Name:  name,
 		Type:  nil,
@@ -365,6 +399,13 @@ func (p *Parser) unaryOperand() ast.Expr {
 
 func (p *Parser) traitExpr() *ast.TraitExpr {
 	p.expect(token.Trait)
+	members := p.traitMembers()
+	return &ast.TraitExpr{
+		Members: members,
+	}
+}
+
+func (p *Parser) traitMembers() []*ast.Binding {
 	var members []*ast.Binding
 	p.expect(token.OpenBrace)
 	for {
@@ -376,9 +417,7 @@ func (p *Parser) traitExpr() *ast.TraitExpr {
 			members = append(members, binding)
 		}
 	}
-	return &ast.TraitExpr{
-		Members: members,
-	}
+	return members
 }
 
 func (p *Parser) structExpr() *ast.StructExpr {
