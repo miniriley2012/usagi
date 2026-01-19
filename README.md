@@ -14,6 +14,8 @@ Usagi is a small programming language for small places.
 
 * [Go](https://github.com/golang/go)
 
+* [Swift](https://swift.org)
+
 * [QBE](https://c9x.me/compile/)
 
 * [Zig](https://codeberg.org/ziglang/zig)
