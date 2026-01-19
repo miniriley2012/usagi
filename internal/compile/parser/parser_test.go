@@ -35,6 +35,19 @@ func genericAdd(x: forSome Integer, y: @TypeOf(x)) @TypeOf(x) {
 	return x + y;
 }
 
+func ArrayList(T: forSome Type) forSome Type {
+	struct ArrayList(data: []T, size: usize, capacity: usize);
+	impl ArrayList {
+		const empty = ArrayList(data: []T(), size: 0, capacity: 0);
+
+		func append(self: Self, item: T) void {
+			self.data[self.size] = item;
+			self.size = self.size + 1;
+		}
+	}
+	return ArrayList;
+}
+
 // Adds two i32 values
 const add: func(arg: TwoInts) i32 = func(arg: TwoInts) i32 {
 	return arg.a + arg.b;
@@ -178,6 +191,19 @@ func expr(w io.Writer, x ast.Expr) {
 	case *ast.ExistentialExpr:
 		io.WriteString(w, "forSome ")
 		expr(w, x.Base)
+	case *ast.IndexExpr:
+		expr(w, x.Base)
+		io.WriteString(w, "[")
+		for i, index := range x.Indices {
+			expr(w, index)
+			if i < len(x.Indices)-1 {
+				io.WriteString(w, ", ")
+			}
+		}
+		io.WriteString(w, "]")
+	case *ast.SliceExpr:
+		io.WriteString(w, "[]")
+		expr(w, x.Base)
 	}
 }
 
@@ -278,5 +304,7 @@ func stmt(w io.Writer, stmt ast.Stmt) {
 	case *ast.ExprStmt:
 		expr(w, stmt.X)
 		io.WriteString(w, ";\n")
+	case *ast.DeclStmt:
+		decl(w, stmt.X)
 	}
 }

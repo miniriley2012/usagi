@@ -299,3 +299,14 @@ func (stmt *DeclStmt) End() token.Pos { return stmt.X.End() }
 
 func (*DeclStmt) astNode() {}
 func (*DeclStmt) astStmt() {}
+
+type IndexExpr struct {
+	Base    Expr
+	Indices []Expr
+}
+
+func (expr *IndexExpr) Pos() token.Pos { return expr.Base.Pos() }
+func (*IndexExpr) End() token.Pos      { panic("TODO") }
+
+func (*IndexExpr) astNode() {}
+func (*IndexExpr) astExpr() {}

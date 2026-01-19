@@ -322,7 +322,7 @@ func (p *Parser) binaryExpr(left ast.Expr) ast.Expr {
 		p.next()
 		member := p.identifier()
 		return &ast.MemberExpr{Base: left, Member: member}
-	case token.Less, token.Minus, token.Plus:
+	case token.Less, token.Minus, token.Plus, token.Assign:
 		p.next()
 		right := p.expr2(nil, t.Precedence())
 		return &ast.BinaryExpr{
@@ -330,8 +330,31 @@ func (p *Parser) binaryExpr(left ast.Expr) ast.Expr {
 			Op:    t,
 			Right: right,
 		}
+	case token.OpenBracket:
+		return p.index(left)
 	default:
 		return left
+	}
+}
+
+func (p *Parser) index(base ast.Expr) *ast.IndexExpr {
+	var indices []ast.Expr
+
+	p.expect(token.OpenBracket)
+	for p.t != nil {
+		if p.accept(token.CloseBracket) != nil {
+			break
+		}
+		indices = append(indices, p.expr())
+		if p.accept(token.CloseBracket) != nil {
+			break
+		}
+		p.expect(token.Comma)
+	}
+
+	return &ast.IndexExpr{
+		Base:    base,
+		Indices: indices,
 	}
 }
 
