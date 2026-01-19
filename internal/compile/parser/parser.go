@@ -46,7 +46,8 @@ func (p *Parser) decl() ast.Decl {
 	case token.Impl:
 		return p.impl()
 	}
-	panic("TODO")
+	p.unexpected("declaration")
+	return nil
 }
 
 func (p *Parser) impl() *ast.ImplDecl {
@@ -121,13 +122,7 @@ func (p *Parser) binding() *ast.Binding {
 	case token.Trait:
 		return p.traitBinding(mode)
 	default:
-		var end token.Pos
-		problem := p.t
-		recovered := p.recover(topLevelRecoveryTokens)
-		if recovered != nil {
-			end = recovered.End
-		}
-		p.error(NewParseError(problem.Pos, end, fmt.Errorf("expected declaration but found %q", problem.Type)))
+		p.unexpected("binding")
 		return nil
 	}
 }
@@ -194,6 +189,10 @@ func (p *Parser) funcBinding(mode ast.BindingMode) *ast.Binding {
 
 	fn := p.funcBody()
 
+	if fn.Body == nil {
+		p.expect(token.Semicolon)
+	}
+
 	return &ast.Binding{
 		Token: token.Func,
 		Mode:  mode,
@@ -226,8 +225,6 @@ func (p *Parser) funcBody() *ast.FuncExpr {
 
 	if p.t.Type == token.OpenBrace {
 		body = p.blockExpr()
-	} else {
-		p.expect(token.Semicolon)
 	}
 
 	return &ast.FuncExpr{
@@ -553,6 +550,16 @@ func (p *Parser) next() {
 	if p.t.Type == token.Comment {
 		p.next()
 	}
+}
+
+func (p *Parser) unexpected(expected string) {
+	var end token.Pos
+	problem := p.t
+	recovered := p.recover(topLevelRecoveryTokens)
+	if recovered != nil {
+		end = recovered.End
+	}
+	p.error(NewParseError(problem.Pos, end, fmt.Errorf("expected %s but found %q", expected, problem.Type)))
 }
 
 func (p *Parser) error(err error) {

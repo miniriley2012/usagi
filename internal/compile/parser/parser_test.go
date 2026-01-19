@@ -27,9 +27,9 @@ impl TwoInts(Drop) {
 }
 
 // Adds two i32 values
-func add(arg: TwoInts) i32 {
+const add: func(arg: TwoInts) i32 = func(arg: TwoInts) i32 {
 	return arg.a + arg.b;
-}
+};
 
 func main() void {
 	std.print(add(TwoInts(a: 1, b: 2)));
@@ -160,6 +160,24 @@ func expr(w io.Writer, x ast.Expr) {
 			binding(w, member)
 		}
 		io.WriteString(w, "}")
+	case *ast.FuncExpr:
+		funcExpr(w, x)
+	}
+}
+
+func funcExpr(w io.Writer, fexpr *ast.FuncExpr) {
+	io.WriteString(w, "func(")
+	for i, param := range fexpr.Params {
+		funcParam(w, param)
+		if i < len(fexpr.Params)-1 {
+			io.WriteString(w, ", ")
+		}
+	}
+	io.WriteString(w, ") ")
+	expr(w, fexpr.ReturnType)
+	if fexpr.Body != nil {
+		io.WriteString(w, " ")
+		blockExpr(w, fexpr.Body)
 	}
 }
 
