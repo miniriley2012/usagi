@@ -149,6 +149,17 @@ func (expr *BinaryExpr) End() token.Pos { return expr.Right.End() }
 func (*BinaryExpr) astNode() {}
 func (*BinaryExpr) astExpr() {}
 
+type UnaryExpr struct {
+	Op   token.Type
+	Base Expr
+}
+
+func (*UnaryExpr) Pos() token.Pos { panic("TODO") }
+func (*UnaryExpr) End() token.Pos { panic("TODO") }
+
+func (*UnaryExpr) astNode() {}
+func (*UnaryExpr) astExpr() {}
+
 type ExprStmt struct{ X Expr }
 
 func (stmt *ExprStmt) Pos() token.Pos { return stmt.X.Pos() }
@@ -247,6 +258,7 @@ func (*NamedArg) astNode() {}
 func (*NamedArg) astExpr() {}
 
 type TraitExpr struct {
+	Traits  []Expr
 	Members []*Binding
 }
 
@@ -267,3 +279,13 @@ func (*ImplDecl) End() token.Pos { panic("TODO") }
 
 func (*ImplDecl) astNode() {}
 func (*ImplDecl) astDecl() {}
+
+type ExistentialExpr struct {
+	Base Expr
+}
+
+func (*ExistentialExpr) Pos() token.Pos { panic("TODO") }
+func (*ExistentialExpr) End() token.Pos { panic("TODO") }
+
+func (*ExistentialExpr) astNode() {}
+func (*ExistentialExpr) astExpr() {}

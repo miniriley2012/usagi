@@ -22,8 +22,17 @@ trait Drop {
 	func drop(self: Self) void;
 }
 
+// Equivalent to
+//   trait Linear {}
+//   impl Linear(!Drop);
+trait Linear(!Drop) {}
+
 impl TwoInts(Drop) {
 	func drop(self: TwoInts) void {}
+}
+
+func genericAdd(x: forSome Integer, y: @TypeOf(x)) @TypeOf(x) {
+	return x + y;
 }
 
 // Adds two i32 values
@@ -106,11 +115,8 @@ func binding(w io.Writer, b *ast.Binding) {
 		fields(w, b.Value.(*ast.StructExpr).Members)
 		io.WriteString(w, ";\n")
 	case token.Trait:
-		io.WriteString(w, " {\n")
-		for _, member := range b.Value.(*ast.TraitExpr).Members {
-			binding(w, member)
-		}
-		io.WriteString(w, "}\n")
+		traitBody(w, b.Value.(*ast.TraitExpr))
+		io.WriteString(w, "\n")
 	default:
 		if b.Type != nil {
 			io.WriteString(w, ": ")
@@ -155,14 +161,35 @@ func expr(w io.Writer, x ast.Expr) {
 		io.WriteString(w, ": ")
 		expr(w, x.Value)
 	case *ast.TraitExpr:
-		io.WriteString(w, "trait {\n")
-		for _, member := range x.Members {
-			binding(w, member)
-		}
-		io.WriteString(w, "}")
+		io.WriteString(w, "trait")
+		traitBody(w, x)
 	case *ast.FuncExpr:
 		funcExpr(w, x)
+	case *ast.UnaryExpr:
+		io.WriteString(w, x.Op.String())
+		expr(w, x.Base)
+	case *ast.ExistentialExpr:
+		io.WriteString(w, "forSome ")
+		expr(w, x.Base)
 	}
+}
+
+func traitBody(w io.Writer, trait *ast.TraitExpr) {
+	if trait.Traits != nil {
+		io.WriteString(w, "(")
+		for i, t := range trait.Traits {
+			expr(w, t)
+			if i < len(trait.Traits)-1 {
+				io.WriteString(w, ", ")
+			}
+		}
+		io.WriteString(w, ") ")
+	}
+	io.WriteString(w, "{\n")
+	for _, m := range trait.Members {
+		binding(w, m)
+	}
+	io.WriteString(w, "}")
 }
 
 func funcExpr(w io.Writer, fexpr *ast.FuncExpr) {

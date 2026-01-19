@@ -130,13 +130,13 @@ func (p *Parser) binding() *ast.Binding {
 func (p *Parser) traitBinding(mode ast.BindingMode) *ast.Binding {
 	p.expect(token.Trait)
 	name := p.identifier()
-	members := p.traitMembers()
+	value := p.traitBody()
 	return &ast.Binding{
 		Token: token.Trait,
 		Mode:  mode,
 		Name:  name,
 		Type:  nil,
-		Value: &ast.TraitExpr{Members: members},
+		Value: value,
 	}
 }
 
@@ -389,6 +389,14 @@ func (p *Parser) unaryOperand() ast.Expr {
 		return p.structExpr()
 	case token.Trait:
 		return p.traitExpr()
+	case token.Bang:
+		p.next()
+		base := p.unaryOperand()
+		return &ast.UnaryExpr{Op: token.Bang, Base: base}
+	case token.ForSome:
+		p.next()
+		base := p.unaryOperand()
+		return &ast.ExistentialExpr{Base: base}
 	default:
 		p.error(NewParseError(p.t.Pos, p.t.End, fmt.Errorf("expected unary operand but found %q", p.t.Type)))
 		return &ast.BadExpr{}
@@ -397,14 +405,26 @@ func (p *Parser) unaryOperand() ast.Expr {
 
 func (p *Parser) traitExpr() *ast.TraitExpr {
 	p.expect(token.Trait)
-	members := p.traitMembers()
-	return &ast.TraitExpr{
-		Members: members,
-	}
+	return p.traitBody()
 }
 
-func (p *Parser) traitMembers() []*ast.Binding {
+func (p *Parser) traitBody() *ast.TraitExpr {
+	var traits []ast.Expr
 	var members []*ast.Binding
+
+	if p.accept(token.OpenParen) != nil {
+		for {
+			if p.accept(token.CloseParen) != nil {
+				break
+			}
+			traits = append(traits, p.expr())
+			if p.accept(token.CloseParen) != nil {
+				break
+			}
+			p.expect(token.Comma)
+		}
+	}
+
 	p.expect(token.OpenBrace)
 	for {
 		if p.accept(token.CloseBrace) != nil {
@@ -415,7 +435,8 @@ func (p *Parser) traitMembers() []*ast.Binding {
 			members = append(members, binding)
 		}
 	}
-	return members
+
+	return &ast.TraitExpr{Traits: traits, Members: members}
 }
 
 func (p *Parser) structExpr() *ast.StructExpr {
