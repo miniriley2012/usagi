@@ -40,7 +40,7 @@ func (p *Parser) wrappedError() error {
 var topLevelRecoveryTokens = []token.Type{token.Semicolon}
 
 func (p *Parser) decl() ast.Decl {
-	switch p.t.Type {
+	switch p.peekNext() {
 	case token.Export, token.Const, token.Let, token.Func, token.Struct, token.Trait:
 		return p.binding()
 	case token.Impl:
@@ -51,16 +51,27 @@ func (p *Parser) decl() ast.Decl {
 }
 
 func (p *Parser) impl() *ast.ImplDecl {
+	var traits []ast.Expr
+	var defs []*ast.Binding
+
 	p.expect(token.Impl)
 
 	typ := p.expr2(nil, token.PrecedenceCall)
-	p.expect(token.OpenParen)
-	trait := p.expr()
-	p.expect(token.CloseParen)
+	if p.accept(token.OpenParen) != nil {
+		for p.t != nil {
+			if p.accept(token.CloseParen) != nil {
+				break
+			}
+			traits = append(traits, p.expr())
+			if p.accept(token.CloseParen) != nil {
+				break
+			}
+			p.expect(token.CloseParen)
+		}
+	}
 
-	var defs []*ast.Binding
 	p.expect(token.OpenBrace)
-	for {
+	for p.t != nil {
 		if p.accept(token.CloseBrace) != nil {
 			break
 		}
@@ -72,7 +83,7 @@ func (p *Parser) impl() *ast.ImplDecl {
 
 	return &ast.ImplDecl{
 		Type:        typ,
-		Trait:       trait,
+		Traits:      traits,
 		Definitions: defs,
 	}
 }
@@ -90,7 +101,7 @@ func (p *Parser) binding() *ast.Binding {
 		mode |= ast.ModeConst
 	}
 
-	if mode&ast.ModeConst != 0 && p.t.Type == token.Identifier {
+	if mode&ast.ModeConst != 0 && p.peekNext() == token.Identifier {
 		name := p.identifier()
 
 		if p.accept(token.Colon) != nil {
@@ -207,7 +218,7 @@ func (p *Parser) funcBody() *ast.FuncExpr {
 	var body *ast.BlockExpr
 
 	p.expect(token.OpenParen)
-	for {
+	for p.t != nil {
 		if p.accept(token.CloseParen) != nil {
 			break
 		}
@@ -223,7 +234,7 @@ func (p *Parser) funcBody() *ast.FuncExpr {
 
 	returnType := p.expr()
 
-	if p.t.Type == token.OpenBrace {
+	if p.peekNext() == token.OpenBrace {
 		body = p.blockExpr()
 	}
 
@@ -238,7 +249,7 @@ func (p *Parser) blockExpr() *ast.BlockExpr {
 	var stmts []ast.Stmt
 
 	p.expect(token.OpenBrace)
-	for {
+	for p.t != nil {
 		if p.accept(token.CloseBrace) != nil {
 			break
 		}
@@ -249,7 +260,7 @@ func (p *Parser) blockExpr() *ast.BlockExpr {
 }
 
 func (p *Parser) stmt() ast.Stmt {
-	switch p.t.Type {
+	switch p.peekNext() {
 	case token.Return, token.Identifier:
 		x := p.expr()
 		p.expect(token.Semicolon)
@@ -257,14 +268,16 @@ func (p *Parser) stmt() ast.Stmt {
 	case token.If:
 		x := p.expr()
 		return &ast.ExprStmt{X: x}
+	case token.Struct, token.Trait, token.Impl, token.Func:
+		return &ast.DeclStmt{X: p.decl()}
 	default:
-		panic("expected statement")
+		p.unexpected("statement")
+		return nil
 	}
 }
 
 func (p *Parser) param() *ast.Param {
-	if p.t.Type == token.Ellipses {
-		p.next()
+	if p.accept(token.Ellipses) != nil {
 		return &ast.Param{
 			Name: nil,
 			Type: &ast.VarArgExpr{},
@@ -288,9 +301,12 @@ func (p *Parser) expr() ast.Expr {
 func (p *Parser) expr2(left ast.Expr, prec token.Precedence) ast.Expr {
 	if left == nil {
 		left = p.unaryOperand()
+		if left == nil {
+			return &ast.BadExpr{}
+		}
 	}
 
-	for p.t.Type.Precedence() > prec {
+	for p.peekNext().Precedence() > prec {
 		left = p.binaryExpr(left)
 	}
 
@@ -298,7 +314,7 @@ func (p *Parser) expr2(left ast.Expr, prec token.Precedence) ast.Expr {
 }
 
 func (p *Parser) binaryExpr(left ast.Expr) ast.Expr {
-	t := p.t.Type
+	t := p.peekNext()
 	switch t {
 	case token.OpenParen:
 		return p.call(left)
@@ -323,7 +339,7 @@ func (p *Parser) call(base ast.Expr) ast.Expr {
 	var args []ast.Expr
 
 	p.expect(token.OpenParen)
-	for {
+	for p.t != nil {
 		if p.accept(token.CloseParen) != nil {
 			break
 		}
@@ -346,7 +362,7 @@ func (p *Parser) call(base ast.Expr) ast.Expr {
 }
 
 func (p *Parser) argument() ast.Expr {
-	if p.t.Type == token.Identifier {
+	if p.peekNext() == token.Identifier {
 		ident := p.identifier()
 		if p.accept(token.Colon) != nil {
 			value := p.expr()
@@ -361,7 +377,7 @@ func (p *Parser) argument() ast.Expr {
 }
 
 func (p *Parser) unaryOperand() ast.Expr {
-	switch p.t.Type {
+	switch p.peekNext() {
 	case token.Identifier:
 		return p.identifier()
 	case token.String:
@@ -398,7 +414,7 @@ func (p *Parser) unaryOperand() ast.Expr {
 		base := p.unaryOperand()
 		return &ast.ExistentialExpr{Base: base}
 	default:
-		p.error(NewParseError(p.t.Pos, p.t.End, fmt.Errorf("expected unary operand but found %q", p.t.Type)))
+		p.unexpected("unary operand")
 		return &ast.BadExpr{}
 	}
 }
@@ -413,7 +429,7 @@ func (p *Parser) traitBody() *ast.TraitExpr {
 	var members []*ast.Binding
 
 	if p.accept(token.OpenParen) != nil {
-		for {
+		for p.t != nil {
 			if p.accept(token.CloseParen) != nil {
 				break
 			}
@@ -426,7 +442,7 @@ func (p *Parser) traitBody() *ast.TraitExpr {
 	}
 
 	p.expect(token.OpenBrace)
-	for {
+	for p.t != nil {
 		if p.accept(token.CloseBrace) != nil {
 			break
 		}
@@ -448,7 +464,7 @@ func (p *Parser) structExpr() *ast.StructExpr {
 func (p *Parser) fields() []*ast.Field {
 	var fields []*ast.Field
 	p.expect(token.OpenParen)
-	for {
+	for p.t != nil {
 		if p.accept(token.CloseParen) != nil {
 			break
 		}
@@ -493,7 +509,7 @@ func (p *Parser) sliceOrManyPointer() ast.Expr {
 		p.next()
 	}
 
-	base = p.expr()
+	base = p.unaryOperand()
 
 	if manyPointer {
 		return &ast.ManyPointerExpr{Base: base}
@@ -532,7 +548,8 @@ func (p *Parser) identifier() *ast.Identifier {
 
 func (p *Parser) expect(tok token.Type) *token.Token {
 	if p.t == nil {
-		panic(io.ErrUnexpectedEOF)
+		p.error(io.ErrUnexpectedEOF)
+		return nil
 	}
 
 	if t := p.accept(tok); t != nil {
@@ -580,7 +597,11 @@ func (p *Parser) unexpected(expected string) {
 	if recovered != nil {
 		end = recovered.End
 	}
-	p.error(NewParseError(problem.Pos, end, fmt.Errorf("expected %s but found %q", expected, problem.Type)))
+	if problem != nil {
+		p.error(NewParseError(problem.Pos, end, fmt.Errorf("expected %s but found %q", expected, problem.Type)))
+	} else {
+		p.error(NewParseError(0, end, fmt.Errorf("expected %s but found EOF", expected)))
+	}
 }
 
 func (p *Parser) error(err error) {
@@ -588,7 +609,7 @@ func (p *Parser) error(err error) {
 }
 
 func (p *Parser) recover(recoveryTokens []token.Type) *token.Token {
-	for !slices.Contains(recoveryTokens, p.t.Type) {
+	for !slices.Contains(recoveryTokens, p.peekNext()) {
 		p.next()
 		if p.t == nil {
 			return nil
@@ -597,6 +618,13 @@ func (p *Parser) recover(recoveryTokens []token.Type) *token.Token {
 	t := p.t
 	p.next()
 	return t
+}
+
+func (p *Parser) peekNext() token.Type {
+	if p.t == nil {
+		return token.Invalid
+	}
+	return p.t.Type
 }
 
 func New(scn Scanner) *Parser {

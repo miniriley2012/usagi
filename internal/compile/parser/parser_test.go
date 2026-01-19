@@ -83,9 +83,16 @@ func decl(w io.Writer, decl ast.Decl) {
 func impl(w io.Writer, impl *ast.ImplDecl) {
 	io.WriteString(w, "impl ")
 	expr(w, impl.Type)
-	io.WriteString(w, "(")
-	expr(w, impl.Trait)
-	io.WriteString(w, ") ")
+	if impl.Traits != nil {
+		io.WriteString(w, "(")
+		for i, t := range impl.Traits {
+			expr(w, t)
+			if i < len(impl.Traits)-1 {
+				io.WriteString(w, ", ")
+			}
+		}
+		io.WriteString(w, ") ")
+	}
 	io.WriteString(w, "{\n")
 	for _, def := range impl.Definitions {
 		binding(w, def)

@@ -270,7 +270,7 @@ func (*TraitExpr) astExpr() {}
 
 type ImplDecl struct {
 	Type        Expr
-	Trait       Expr
+	Traits      []Expr
 	Definitions []*Binding
 }
 
@@ -289,3 +289,13 @@ func (*ExistentialExpr) End() token.Pos { panic("TODO") }
 
 func (*ExistentialExpr) astNode() {}
 func (*ExistentialExpr) astExpr() {}
+
+type DeclStmt struct {
+	X Decl
+}
+
+func (stmt *DeclStmt) Pos() token.Pos { return stmt.X.Pos() }
+func (stmt *DeclStmt) End() token.Pos { return stmt.X.End() }
+
+func (*DeclStmt) astNode() {}
+func (*DeclStmt) astStmt() {}
