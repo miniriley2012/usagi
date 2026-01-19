@@ -13,6 +13,7 @@ const (
 	Const
 	Enum
 	Export
+	ForSome
 	Func
 	If
 	Impl
@@ -23,6 +24,7 @@ const (
 	Union
 	Assign
 	Asterisk
+	Bang
 	CloseBrace
 	CloseBracket
 	CloseParen
@@ -52,8 +54,8 @@ func (t Type) GoString() string {
 	return goNames[t]
 }
 
-var names = []string{"<invalid>", "<comment>", "<identifier>", "<integer>", "<string>", "const", "enum", "export", "func", "if", "impl", "let", "return", "struct", "trait", "union", "=", "*", "}", "]", ")", ":", ",", ".", "...", "<", "-", "{", "[", "(", "+", ";"}
-var goNames = []string{"token.Invalid", "token.Comment", "token.Identifier", "token.Integer", "token.String", "token.Const", "token.Enum", "token.Export", "token.Func", "token.If", "token.Impl", "token.Let", "token.Return", "token.Struct", "token.Trait", "token.Union", "token.Assign", "token.Asterisk", "token.CloseBrace", "token.CloseBracket", "token.CloseParen", "token.Colon", "token.Comma", "token.Dot", "token.Ellipses", "token.Less", "token.Minus", "token.OpenBrace", "token.OpenBracket", "token.OpenParen", "token.Plus", "token.Semicolon"}
+var names = []string{"<invalid>", "<comment>", "<identifier>", "<integer>", "<string>", "const", "enum", "export", "forSome", "func", "if", "impl", "let", "return", "struct", "trait", "union", "=", "*", "!", "}", "]", ")", ":", ",", ".", "...", "<", "-", "{", "[", "(", "+", ";"}
+var goNames = []string{"token.Invalid", "token.Comment", "token.Identifier", "token.Integer", "token.String", "token.Const", "token.Enum", "token.Export", "token.ForSome", "token.Func", "token.If", "token.Impl", "token.Let", "token.Return", "token.Struct", "token.Trait", "token.Union", "token.Assign", "token.Asterisk", "token.Bang", "token.CloseBrace", "token.CloseBracket", "token.CloseParen", "token.Colon", "token.Comma", "token.Dot", "token.Ellipses", "token.Less", "token.Minus", "token.OpenBrace", "token.OpenBracket", "token.OpenParen", "token.Plus", "token.Semicolon"}
 
 type TrieNode struct {
 	Rune     rune
@@ -61,4 +63,4 @@ type TrieNode struct {
 	Children []*TrieNode
 }
 
-var Fixed = &TrieNode{'\x00', Invalid, []*TrieNode{{'(', OpenParen, nil}, {')', CloseParen, nil}, {'*', Asterisk, nil}, {'+', Plus, nil}, {',', Comma, nil}, {'-', Minus, nil}, {'.', Dot, []*TrieNode{{'.', Invalid, []*TrieNode{{'.', Ellipses, nil}}}}}, {':', Colon, nil}, {';', Semicolon, nil}, {'<', Less, nil}, {'=', Assign, nil}, {'[', OpenBracket, nil}, {']', CloseBracket, nil}, {'c', Invalid, []*TrieNode{{'o', Invalid, []*TrieNode{{'n', Invalid, []*TrieNode{{'s', Invalid, []*TrieNode{{'t', Const, nil}}}}}}}}}, {'e', Invalid, []*TrieNode{{'n', Invalid, []*TrieNode{{'u', Invalid, []*TrieNode{{'m', Enum, nil}}}}}, {'x', Invalid, []*TrieNode{{'p', Invalid, []*TrieNode{{'o', Invalid, []*TrieNode{{'r', Invalid, []*TrieNode{{'t', Export, nil}}}}}}}}}}}, {'f', Invalid, []*TrieNode{{'u', Invalid, []*TrieNode{{'n', Invalid, []*TrieNode{{'c', Func, nil}}}}}}}, {'i', Invalid, []*TrieNode{{'f', If, nil}, {'m', Invalid, []*TrieNode{{'p', Invalid, []*TrieNode{{'l', Impl, nil}}}}}}}, {'l', Invalid, []*TrieNode{{'e', Invalid, []*TrieNode{{'t', Let, nil}}}}}, {'r', Invalid, []*TrieNode{{'e', Invalid, []*TrieNode{{'t', Invalid, []*TrieNode{{'u', Invalid, []*TrieNode{{'r', Invalid, []*TrieNode{{'n', Return, nil}}}}}}}}}}}, {'s', Invalid, []*TrieNode{{'t', Invalid, []*TrieNode{{'r', Invalid, []*TrieNode{{'u', Invalid, []*TrieNode{{'c', Invalid, []*TrieNode{{'t', Struct, nil}}}}}}}}}}}, {'t', Invalid, []*TrieNode{{'r', Invalid, []*TrieNode{{'a', Invalid, []*TrieNode{{'i', Invalid, []*TrieNode{{'t', Trait, nil}}}}}}}}}, {'u', Invalid, []*TrieNode{{'n', Invalid, []*TrieNode{{'i', Invalid, []*TrieNode{{'o', Invalid, []*TrieNode{{'n', Union, nil}}}}}}}}}, {'{', OpenBrace, nil}, {'}', CloseBrace, nil}}}
+var Fixed = &TrieNode{'\x00', Invalid, []*TrieNode{{'!', Bang, nil}, {'(', OpenParen, nil}, {')', CloseParen, nil}, {'*', Asterisk, nil}, {'+', Plus, nil}, {',', Comma, nil}, {'-', Minus, nil}, {'.', Dot, []*TrieNode{{'.', Invalid, []*TrieNode{{'.', Ellipses, nil}}}}}, {':', Colon, nil}, {';', Semicolon, nil}, {'<', Less, nil}, {'=', Assign, nil}, {'[', OpenBracket, nil}, {']', CloseBracket, nil}, {'c', Invalid, []*TrieNode{{'o', Invalid, []*TrieNode{{'n', Invalid, []*TrieNode{{'s', Invalid, []*TrieNode{{'t', Const, nil}}}}}}}}}, {'e', Invalid, []*TrieNode{{'n', Invalid, []*TrieNode{{'u', Invalid, []*TrieNode{{'m', Enum, nil}}}}}, {'x', Invalid, []*TrieNode{{'p', Invalid, []*TrieNode{{'o', Invalid, []*TrieNode{{'r', Invalid, []*TrieNode{{'t', Export, nil}}}}}}}}}}}, {'f', Invalid, []*TrieNode{{'o', Invalid, []*TrieNode{{'r', Invalid, []*TrieNode{{'S', Invalid, []*TrieNode{{'o', Invalid, []*TrieNode{{'m', Invalid, []*TrieNode{{'e', ForSome, nil}}}}}}}}}}}, {'u', Invalid, []*TrieNode{{'n', Invalid, []*TrieNode{{'c', Func, nil}}}}}}}, {'i', Invalid, []*TrieNode{{'f', If, nil}, {'m', Invalid, []*TrieNode{{'p', Invalid, []*TrieNode{{'l', Impl, nil}}}}}}}, {'l', Invalid, []*TrieNode{{'e', Invalid, []*TrieNode{{'t', Let, nil}}}}}, {'r', Invalid, []*TrieNode{{'e', Invalid, []*TrieNode{{'t', Invalid, []*TrieNode{{'u', Invalid, []*TrieNode{{'r', Invalid, []*TrieNode{{'n', Return, nil}}}}}}}}}}}, {'s', Invalid, []*TrieNode{{'t', Invalid, []*TrieNode{{'r', Invalid, []*TrieNode{{'u', Invalid, []*TrieNode{{'c', Invalid, []*TrieNode{{'t', Struct, nil}}}}}}}}}}}, {'t', Invalid, []*TrieNode{{'r', Invalid, []*TrieNode{{'a', Invalid, []*TrieNode{{'i', Invalid, []*TrieNode{{'t', Trait, nil}}}}}}}}}, {'u', Invalid, []*TrieNode{{'n', Invalid, []*TrieNode{{'i', Invalid, []*TrieNode{{'o', Invalid, []*TrieNode{{'n', Union, nil}}}}}}}}}, {'{', OpenBrace, nil}, {'}', CloseBrace, nil}}}
