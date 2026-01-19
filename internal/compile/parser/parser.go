@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -576,6 +577,10 @@ func New(scn Scanner) *Parser {
 
 func NewFromReader(rd io.Reader) *Parser {
 	return New(scanner.New(rd))
+}
+
+func ParseBytes(name string, src []byte) (*ast.Module, error) {
+	return NewFromReader(bytes.NewReader(src)).Parse(name)
 }
 
 type Scanner interface {
