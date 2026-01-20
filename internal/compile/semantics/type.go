@@ -232,6 +232,14 @@ func (typ *StructType) Equal(other Type) bool {
 	return other == typ
 }
 
+func (typ *StructType) String() string {
+	members := make([]string, 0, len(typ.members))
+	for _, m := range typ.members {
+		members = append(members, m.String())
+	}
+	return fmt.Sprintf("struct(%s)", strings.Join(members, ", "))
+}
+
 type NameAndType struct {
 	name string
 	typ  Type
@@ -243,3 +251,7 @@ func NewNameAndType(name string, typ Type) *NameAndType {
 
 func (nt *NameAndType) Name() string { return nt.name }
 func (nt *NameAndType) Type() Type   { return nt.typ }
+
+func (nt *NameAndType) String() string {
+	return fmt.Sprintf("%s: %s", nt.Name(), nt.Type())
+}
