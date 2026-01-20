@@ -132,6 +132,15 @@ func (p *pass) expr2(expr ast.Expr) *TypeAndValue {
 	case *ast.MemberExpr:
 		base := p.expr(expr.Base)
 		return p.member(base, expr.Member.Name)
+	case *ast.StructExpr:
+		members := make([]*NameAndType, 0, len(expr.Members))
+		for _, member := range expr.Members {
+			name := member.Name.Name
+			typ := p.expr(member.Type).Value().(*TypeValue).Type()
+			members = append(members, NewNameAndType(name, typ))
+		}
+		typ := NewStructType(members)
+		return NewTypeAndValue(typ, NewTypeValue(typ))
 	default:
 		panic(fmt.Errorf("unhandled expr node %T", expr))
 	}
