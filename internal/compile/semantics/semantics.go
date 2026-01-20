@@ -1,0 +1,190 @@
+package semantics
+
+import (
+	"fmt"
+	"strconv"
+
+	"codeberg.org/rileyq/usagi/internal/compile/ast"
+	"codeberg.org/rileyq/usagi/internal/compile/token"
+)
+
+type CheckConfig struct {
+	Module   *ast.Module
+	Info     *Info
+	Importer Importer
+}
+
+func Check(cfg *CheckConfig) (*Module, error) {
+	var p pass
+	p.info = cfg.Info
+	p.importer = cfg.Importer
+	return p.Apply(cfg.Module)
+}
+
+type pass struct {
+	cur            *Scope
+	resultLocation *symbol
+	info           *Info
+	importer       Importer
+}
+
+func (p *pass) Apply(moduleAst *ast.Module) (*Module, error) {
+	module := p.module(moduleAst)
+	return module, nil
+}
+
+func (p *pass) module(m *ast.Module) *Module {
+	scope := NewScope(Universe, m.Pos(), m.End(), "module")
+	p.cur = scope
+	for _, decl := range m.Decls {
+		p.decl(decl)
+	}
+	p.cur = nil
+	return &Module{scope: scope}
+}
+
+func (p *pass) decl(decl ast.Decl) {
+	switch decl := decl.(type) {
+	case *ast.Binding:
+		p.binding(decl)
+	default:
+		panic(fmt.Errorf("unhandled decl node %T", decl))
+	}
+}
+
+func (p *pass) binding(b *ast.Binding) {
+	var typeResult *TypeAndValue
+	var valueResult *TypeAndValue
+
+	sym := &symbol{name: b.Name.Name, tv: &TypeAndValue{}}
+	p.resultLocation = sym
+
+	if b.Type != nil {
+		typeResult = p.expr(b.Type)
+		sym.tv.typ = typeResult.Value().(*TypeValue).Type()
+	}
+
+	if b.Value != nil {
+		valueResult = p.expr(b.Value)
+
+		if typeResult != nil && !valueResult.Type().IsAssignableTo(typeResult.Type()) {
+			panic(fmt.Errorf("%s is not assignable to %s", valueResult.Type(), typeResult.Type()))
+		}
+
+		sym.tv.val = valueResult.Value()
+	}
+
+	p.resultLocation = nil
+	p.cur.Insert(sym)
+}
+
+func (p *pass) expr(expr ast.Expr) *TypeAndValue {
+	tv := p.expr2(expr)
+	if tv.Type() != nil && p.info != nil && p.info.Types != nil {
+		p.info.Types[expr] = tv.Type()
+	}
+	return tv
+}
+
+func (p *pass) expr2(expr ast.Expr) *TypeAndValue {
+	switch expr := expr.(type) {
+	case *ast.Literal:
+		switch expr.Tok {
+		case token.String:
+			value, err := strconv.Unquote(expr.Value)
+			if err != nil {
+				panic(err)
+			}
+			val := NewStringLiteral(value)
+			return NewTypeAndValue(val.Type(), val)
+		default:
+			panic(fmt.Errorf("unknown token %q for literal", expr.Tok))
+		}
+	case *ast.Identifier:
+		integer := NewIntegerTypeFromName(expr.Name)
+		if integer != nil {
+			return NewTypeAndValue(integer, NewTypeValue(integer))
+		}
+		sym := p.cur.Lookup(expr.Name)
+		if sym != nil {
+			return NewTypeAndValue(sym.Type(), sym.Value())
+		}
+		return nil
+	case *ast.FuncExpr:
+		params := make([]*NameAndType, 0, len(expr.Params))
+		for _, param := range expr.Params {
+			typ := p.expr(param.Type).Value().(*TypeValue).Type()
+			params = append(params, NewNameAndType(param.Name.Name, typ))
+		}
+		returnType := p.expr(expr.ReturnType).Value().(*TypeValue).Type()
+		sig := NewSignature(params, returnType)
+		return NewTypeAndValue(sig, NewTypeValue(sig))
+	case *ast.ManyPointerExpr:
+		typ := NewManyPointer(p.expr(expr.Base).Value().(*TypeValue).Type())
+		return NewTypeAndValue(typ, NewTypeValue(typ))
+	case *ast.CallExpr:
+		base := p.expr(expr.Base)
+		args := make([]*TypeAndValue, 0, len(expr.Args))
+		for _, argNode := range expr.Args {
+			args = append(args, p.expr(argNode))
+		}
+		return p.call(base, args)
+	default:
+		panic(fmt.Errorf("unhandled expr node %T", expr))
+	}
+}
+
+func (p *pass) call(base *TypeAndValue, args []*TypeAndValue) *TypeAndValue {
+	if builtin, isBuiltin := base.Value().(*Builtin); isBuiltin {
+		return p.builtin(builtin, args)
+	}
+
+	if sig, isSig := base.Type().(*Signature); isSig {
+		return NewTypeAndValue(sig.ReturnType(), nil)
+	}
+
+	panic(fmt.Errorf("unhandled base for call: %T", base))
+}
+
+func (p *pass) builtin(builtin *Builtin, args []*TypeAndValue) *TypeAndValue {
+	switch builtin.id {
+	case BuiltinImport:
+		if len(args) != 1 {
+			panic(fmt.Errorf("Incorrect number of args for %s", builtin))
+		}
+		name := args[0].Value().(*StringLiteral).Value()
+		if p.importer == nil {
+			panic(fmt.Errorf("@import used but no importer is set"))
+		}
+		module, err := p.importer.Import(name)
+		if err != nil {
+			panic(err)
+		}
+		val := NewModuleImport(module)
+		return NewTypeAndValue(val.Type(), val)
+	case BuiltinExtern:
+		if len(args) != 1 {
+			panic(fmt.Errorf("Incorrect number of args for %s", builtin))
+		}
+		typ := p.resultLocation.Type()
+		linkName := args[0].Value().(*StringLiteral).Value()
+		p.resultLocation.linkName = linkName
+		return NewTypeAndValue(typ, NewExternalSymbol(linkName, typ))
+	default:
+		panic(fmt.Sprintf("unexpected semantics.BuiltinID: %#v", builtin.id))
+	}
+}
+
+type Module struct {
+	scope *Scope
+}
+
+func (m *Module) Scope() *Scope { return m.scope }
+
+type Info struct {
+	Types map[ast.Expr]Type
+}
+
+type Importer interface {
+	Import(name string) (*Module, error)
+}
