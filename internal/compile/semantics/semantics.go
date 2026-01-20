@@ -40,7 +40,7 @@ func (p *pass) module(m *ast.Module) *Module {
 		p.decl(decl)
 	}
 	p.cur = nil
-	return &Module{scope: scope}
+	return &Module{name: m.Name, scope: scope}
 }
 
 func (p *pass) decl(decl ast.Decl) {
@@ -176,8 +176,11 @@ func (p *pass) builtin(builtin *Builtin, args []*TypeAndValue) *TypeAndValue {
 }
 
 type Module struct {
+	name  string
 	scope *Scope
 }
+
+func (m *Module) Name() string { return m.name }
 
 func (m *Module) Scope() *Scope { return m.scope }
 

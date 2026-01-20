@@ -92,3 +92,7 @@ func (value *ModuleImport) Module() *Module { return value.module }
 func (value *ModuleImport) Type() Type {
 	return NewStructType(nil)
 }
+
+func (value *ModuleImport) String() string {
+	return fmt.Sprintf("@import(%q)", value.Module().Name())
+}
