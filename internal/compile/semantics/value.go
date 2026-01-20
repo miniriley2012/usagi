@@ -87,7 +87,7 @@ type ModuleImport struct {
 
 func NewModuleImport(module *Module) *ModuleImport { return &ModuleImport{module} }
 
-func (value *ModuleImport) Module() *Module { return value.Module() }
+func (value *ModuleImport) Module() *Module { return value.module }
 
 func (value *ModuleImport) Type() Type {
 	return NewStructType(nil)
