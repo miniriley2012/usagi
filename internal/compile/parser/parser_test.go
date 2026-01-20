@@ -15,6 +15,10 @@ struct TwoInts (
 	b: i32,
 );
 
+const Type = trait(closed) {};
+
+trait(closed) Type {}
+
 trait Drop {
 	func drop(self: Self) void;
 }

@@ -38,7 +38,15 @@ func fprint(w io.Writer, node ast.Node, depth int) error {
 		if node.Mode.Const() {
 			decls = append(decls, "const")
 		}
-		if node.Token != token.Const {
+		switch node.Token {
+		case token.Const:
+		case token.Trait:
+			if node.Value.(*ast.TraitExpr).Closed {
+				decls = append(decls, "trait(closed)")
+				break
+			}
+			fallthrough
+		default:
 			decls = append(decls, node.Token.String())
 		}
 		decls = append(decls, node.Name.Name)
@@ -163,6 +171,22 @@ func fprint(w io.Writer, node ast.Node, depth int) error {
 			return err
 		}
 		err = funcBody(w, node, depth)
+		if err != nil {
+			return err
+		}
+		return nil
+	case *ast.TraitExpr:
+		_, err = io.WriteString(w, "trait")
+		if err != nil {
+			return err
+		}
+		if node.Closed {
+			_, err = io.WriteString(w, "(closed)")
+			if err != nil {
+				return err
+			}
+		}
+		err = traitBody(w, node, depth)
 		if err != nil {
 			return err
 		}

@@ -139,9 +139,23 @@ func (p *Parser) binding() *ast.Binding {
 }
 
 func (p *Parser) traitBinding(mode ast.BindingMode) *ast.Binding {
+	var closed bool
 	p.expect(token.Trait)
+
+	if p.accept(token.OpenParen) != nil {
+		state := p.identifier()
+		if state.Name != "open" && state.Name != "closed" {
+			p.error(fmt.Errorf("expected \"open\" or \"closed\" for trait"))
+		}
+		closed = state.Name == "closed"
+		p.expect(token.CloseParen)
+	}
+
 	name := p.identifier()
 	value := p.traitBody()
+	if value != nil {
+		value.Closed = closed
+	}
 	return &ast.Binding{
 		Token: token.Trait,
 		Mode:  mode,
@@ -443,8 +457,21 @@ func (p *Parser) unaryOperand() ast.Expr {
 }
 
 func (p *Parser) traitExpr() *ast.TraitExpr {
+	var closed bool
 	p.expect(token.Trait)
-	return p.traitBody()
+	if p.accept(token.OpenParen) != nil {
+		state := p.identifier()
+		if state.Name != "open" && state.Name != "closed" {
+			p.error(fmt.Errorf("expected \"open\" or \"closed\" for trait"))
+		}
+		closed = state.Name == "closed"
+		p.expect(token.CloseParen)
+	}
+	body := p.traitBody()
+	if body != nil {
+		body.Closed = closed
+	}
+	return body
 }
 
 func (p *Parser) traitBody() *ast.TraitExpr {

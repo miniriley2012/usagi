@@ -258,6 +258,7 @@ func (*NamedArg) astNode() {}
 func (*NamedArg) astExpr() {}
 
 type TraitExpr struct {
+	Closed  bool
 	Traits  []Expr
 	Members []*Binding
 }
