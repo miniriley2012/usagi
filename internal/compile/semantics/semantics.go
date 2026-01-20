@@ -129,9 +129,24 @@ func (p *pass) expr2(expr ast.Expr) *TypeAndValue {
 			args = append(args, p.expr(argNode))
 		}
 		return p.call(base, args)
+	case *ast.MemberExpr:
+		base := p.expr(expr.Base)
+		return p.member(base, expr.Member.Name)
 	default:
 		panic(fmt.Errorf("unhandled expr node %T", expr))
 	}
+}
+
+func (p *pass) member(base *TypeAndValue, member string) *TypeAndValue {
+	if moduleImport, isImport := base.Value().(*ModuleImport); isImport {
+		sym := moduleImport.Module().Scope().Lookup(member)
+		if sym == nil {
+			panic(fmt.Errorf("member %q not found in module", member))
+		}
+		return NewTypeAndValue(sym.Type(), sym.Value())
+	}
+
+	panic(fmt.Errorf("unhandled base %q for member expression", base))
 }
 
 func (p *pass) call(base *TypeAndValue, args []*TypeAndValue) *TypeAndValue {
