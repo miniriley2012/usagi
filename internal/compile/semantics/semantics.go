@@ -97,6 +97,12 @@ func (p *pass) expr2(expr ast.Expr) *TypeAndValue {
 			}
 			val := NewStringLiteral(value)
 			return NewTypeAndValue(val.Type(), val)
+		case token.Integer:
+			value, err := NewIntegerLiteralFromString(expr.Value)
+			if err != nil {
+				panic(err)
+			}
+			return NewTypeAndValue(value.Type(), value)
 		default:
 			panic(fmt.Errorf("unknown token %q for literal", expr.Tok))
 		}

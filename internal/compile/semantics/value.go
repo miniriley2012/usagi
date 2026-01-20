@@ -1,6 +1,9 @@
 package semantics
 
-import "fmt"
+import (
+	"fmt"
+	"math/big"
+)
 
 type Value interface {
 	Type() Type
@@ -66,6 +69,28 @@ func (s *StringLiteral) Value() string { return s.value }
 
 func (s *StringLiteral) Type() Type {
 	return NewSliceType(NewIntegerType(false, 8))
+}
+
+type IntegerLiteral struct {
+	value *big.Int
+}
+
+func NewIntegerLiteral(value *big.Int) *IntegerLiteral { return &IntegerLiteral{value} }
+
+func NewIntegerLiteralFromString(value string) (*IntegerLiteral, error) {
+	v := &big.Int{}
+	v.SetString(value, 0)
+	return NewIntegerLiteral(v), nil
+}
+
+func (value *IntegerLiteral) Value() *big.Int { return value.value }
+
+func (value *IntegerLiteral) Type() Type {
+	return NewIntegerType(value.value.Sign() < 0, value.value.BitLen())
+}
+
+func (value *IntegerLiteral) String() string {
+	return value.value.String()
 }
 
 type ExternalSymbol struct{ nt *NameAndType }
