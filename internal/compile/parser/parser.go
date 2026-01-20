@@ -105,7 +105,7 @@ func (p *Parser) binding() *ast.Binding {
 		name := p.identifier()
 
 		if p.accept(token.Colon) != nil {
-			typ = p.expr()
+			typ = p.expr2(nil, token.PrecedenceAssignment)
 		}
 
 		if p.accept(token.Assign) != nil {
@@ -174,7 +174,7 @@ func (p *Parser) letBinding(mode ast.BindingMode) *ast.Binding {
 	name := p.identifier()
 
 	if p.accept(token.Colon) != nil {
-		typ = p.expr()
+		typ = p.expr2(nil, token.PrecedenceAssignment)
 	}
 
 	if p.accept(token.Assign) != nil {
@@ -232,7 +232,7 @@ func (p *Parser) funcBody() *ast.FuncExpr {
 		}
 	}
 
-	returnType := p.expr()
+	returnType := p.expr2(nil, token.PrecedenceAssignment)
 
 	if p.peekNext() == token.OpenBrace {
 		body = p.blockExpr()
