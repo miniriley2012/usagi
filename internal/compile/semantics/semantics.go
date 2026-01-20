@@ -69,6 +69,8 @@ func (p *pass) binding(b *ast.Binding) {
 
 		if typeResult != nil && !valueResult.Type().IsAssignableTo(typeResult.Type()) {
 			panic(fmt.Errorf("%s is not assignable to %s", valueResult.Type(), typeResult.Type()))
+		} else {
+			sym.tv.typ = valueResult.Type()
 		}
 
 		sym.tv.val = valueResult.Value()
