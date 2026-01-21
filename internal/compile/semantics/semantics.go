@@ -9,23 +9,27 @@ import (
 )
 
 type CheckConfig struct {
-	Module   *ast.Module
-	Info     *Info
-	Importer Importer
+	Module          *ast.Module
+	Info            *Info
+	Importer        Importer
+	CheckFuncBodies bool
 }
 
 func Check(cfg *CheckConfig) (*Module, error) {
 	var p pass
 	p.info = cfg.Info
 	p.importer = cfg.Importer
+	p.checkFuncBodies = cfg.CheckFuncBodies
 	return p.Apply(cfg.Module)
 }
 
 type pass struct {
-	cur            *Scope
-	resultLocation *symbol
-	info           *Info
-	importer       Importer
+	cur             *Scope
+	resultLocation  *symbol
+	info            *Info
+	importer        Importer
+	checkFuncBodies bool
+	returnType      Type
 }
 
 func (p *pass) Apply(moduleAst *ast.Module) (*Module, error) {
@@ -80,6 +84,17 @@ func (p *pass) binding(b *ast.Binding) {
 	p.cur.Insert(sym)
 }
 
+func (p *pass) stmt(stmt ast.Stmt) {
+	switch stmt := stmt.(type) {
+	case *ast.DeclStmt:
+		p.decl(stmt.X)
+	case *ast.ExprStmt:
+		p.expr(stmt.X)
+	default:
+		panic(fmt.Sprintf("unexpected ast.Stmt: %#v", stmt))
+	}
+}
+
 func (p *pass) expr(expr ast.Expr) *TypeAndValue {
 	tv := p.expr2(expr)
 	if tv.Type() != nil && p.info != nil && p.info.Types != nil {
@@ -119,14 +134,33 @@ func (p *pass) expr2(expr ast.Expr) *TypeAndValue {
 		}
 		return nil
 	case *ast.FuncExpr:
+		funcScope := NewScope(p.cur, token.NoPos, token.NoPos, "func")
+		p.cur = funcScope
+		defer func() {
+			p.cur = funcScope.parent
+		}()
+
 		params := make([]*NameAndType, 0, len(expr.Params))
 		for _, param := range expr.Params {
 			typ := p.expr(param.Type).Value().(*TypeValue).Type()
-			params = append(params, NewNameAndType(param.Name.Name, typ))
+			tv := NewNameAndType(param.Name.Name, typ)
+			params = append(params, tv)
+			funcScope.Insert(NewSymbol(tv.Name(), NewTypeAndValue(tv.Type(), nil)))
 		}
 		returnType := p.expr(expr.ReturnType).Value().(*TypeValue).Type()
 		sig := NewSignature(params, returnType)
-		return NewTypeAndValue(sig, NewTypeValue(sig))
+		if expr.Body == nil {
+			return NewTypeAndValue(sig, NewTypeValue(sig))
+		}
+		if p.checkFuncBodies {
+			oldReturnType := p.returnType
+			p.returnType = returnType
+			defer func() { p.returnType = oldReturnType }()
+			for _, stmt := range expr.Body.List {
+				p.stmt(stmt)
+			}
+		}
+		return NewTypeAndValue(sig, nil)
 	case *ast.ManyPointerExpr:
 		typ := NewManyPointer(p.expr(expr.Base).Value().(*TypeValue).Type())
 		return NewTypeAndValue(typ, NewTypeValue(typ))
@@ -149,6 +183,35 @@ func (p *pass) expr2(expr ast.Expr) *TypeAndValue {
 		}
 		typ := NewStructType(members)
 		return NewTypeAndValue(typ, NewTypeValue(typ))
+	case *ast.ReturnExpr:
+		value := p.expr(expr.Value)
+		if !value.Type().IsAssignableTo(p.returnType) {
+			panic(fmt.Errorf("%s is not assignable to return type %s", value.Type(), p.returnType))
+		}
+		return NewTypeAndValue(NewIntegerType(false, 0), value.Value())
+	case *ast.BinaryExpr:
+		left := p.expr(expr.Left)
+		right := p.expr(expr.Right)
+		switch expr.Op {
+		case token.Plus:
+			l, isLeftInt := left.Type().(*IntegerType)
+			r, isRightInt := right.Type().(*IntegerType)
+			if !isLeftInt || !isRightInt || !l.Equal(r) {
+				panic(fmt.Errorf("cannot add %s and %s", left.Type(), right.Type()))
+			}
+			if left.Value() != nil && right.Value() != nil {
+				l := left.Value().(*IntegerLiteral)
+				r := right.Value().(*IntegerLiteral)
+				value := NewIntegerLiteral(l.Value().Add(l.Value(), r.Value()))
+				return NewTypeAndValue(value.Type(), value)
+			}
+			return NewTypeAndValue(l, nil)
+		default:
+			panic(fmt.Sprintf("unexpected token.Type: %#v", expr.Op))
+		}
+	case *ast.NamedArg:
+		arg := NewNamedArgument(expr.Name.Name, p.expr(expr.Value))
+		return NewTypeAndValue(arg.Type(), arg.Value())
 	default:
 		panic(fmt.Errorf("unhandled expr node %T", expr))
 	}
@@ -163,6 +226,14 @@ func (p *pass) member(base *TypeAndValue, member string) *TypeAndValue {
 		return NewTypeAndValue(sym.Type(), sym.Value())
 	}
 
+	if structType, isStruct := base.Type().(*StructType); isStruct {
+		for _, field := range structType.Members() {
+			if field.name == member {
+				return NewTypeAndValue(field.Type(), nil)
+			}
+		}
+	}
+
 	panic(fmt.Errorf("unhandled base %q for member expression", base))
 }
 
@@ -175,7 +246,21 @@ func (p *pass) call(base *TypeAndValue, args []*TypeAndValue) *TypeAndValue {
 		return NewTypeAndValue(sig.ReturnType(), nil)
 	}
 
-	panic(fmt.Errorf("unhandled base for call: %T", base))
+	if structType, isStruct := base.Value().(*TypeValue).Type().(*StructType); isStruct {
+		if len(args) != len(structType.Members()) {
+			panic(fmt.Errorf("wrong arguments for struct constructor"))
+		}
+
+		for i := range args {
+			if !args[i].typ.IsAssignableTo(structType.Members()[i].Type()) {
+				panic(fmt.Errorf("%s is not assignable to %s", args[i].typ, structType.Members()[i].Type()))
+			}
+		}
+
+		return NewTypeAndValue(structType, nil)
+	}
+
+	panic(fmt.Errorf("unhandled base for call: %T", base.Type()))
 }
 
 func (p *pass) builtin(builtin *Builtin, args []*TypeAndValue) *TypeAndValue {

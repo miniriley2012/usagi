@@ -14,6 +14,21 @@ const printf: func(fmt: [*]u8) i32 = @extern("printf");
 
 const main = `
 const std = @import("std");
+
+const thing = std.printf;
+
+struct TwoInts(a: i32, b: i32);
+
+func add(arg: TwoInts) i32 {
+	return arg.a + arg.b;
+}
+
+export func main() i32 {
+	std.printf("call through module member\n");
+	thing("call through local declaration\n");
+	std.printf("2 + 2 = %d", add(TwoInts(a: 2, b: 2)));
+	return 0;
+}
 `
 
 func loadModule(name string, src string, info *Info, importer Importer) (*ast.Module, *Module, error) {
@@ -23,9 +38,10 @@ func loadModule(name string, src string, info *Info, importer Importer) (*ast.Mo
 	}
 
 	moduleInterface, err := Check(&CheckConfig{
-		Module:   moduleAst,
-		Info:     info,
-		Importer: importer,
+		Module:          moduleAst,
+		Info:            info,
+		Importer:        importer,
+		CheckFuncBodies: true,
 	})
 	if err != nil {
 		return moduleAst, nil, err

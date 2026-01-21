@@ -121,3 +121,16 @@ func (value *ModuleImport) Type() Type {
 func (value *ModuleImport) String() string {
 	return fmt.Sprintf("@import(%q)", value.Module().Name())
 }
+
+type NamedArgument struct {
+	name string
+	arg  *TypeAndValue
+}
+
+func NewNamedArgument(name string, arg *TypeAndValue) *NamedArgument {
+	return &NamedArgument{name, arg}
+}
+
+func (value *NamedArgument) Name() string { return value.name }
+func (value *NamedArgument) Type() Type   { return value.arg.Type() }
+func (value *NamedArgument) Value() Value { return value.arg.Value() }
