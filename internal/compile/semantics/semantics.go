@@ -85,8 +85,8 @@ func (p *pass) binding(b *ast.Binding) {
 		sym.tv.val = valueResult.Value()
 	}
 
-	if p.info != nil && p.info.Uses != nil {
-		p.info.Uses[b.Name] = sym
+	if p.info != nil && p.info.Defs != nil {
+		p.info.Defs[b.Name] = sym
 	}
 
 	p.resultLocation = nil
