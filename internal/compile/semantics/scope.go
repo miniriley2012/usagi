@@ -144,6 +144,7 @@ type Symbol interface {
 	Type() Type
 	Value() Value
 	LinkName() string
+	Scope() *Scope
 
 	setScope(scope *Scope)
 }
@@ -155,9 +156,10 @@ type symbol struct {
 	tv       *TypeAndValue
 }
 
-func (sym *symbol) Name() string { return sym.name }
-func (sym *symbol) Type() Type   { return sym.tv.Type() }
-func (sym *symbol) Value() Value { return sym.tv.Value() }
+func (sym *symbol) Name() string  { return sym.name }
+func (sym *symbol) Type() Type    { return sym.tv.Type() }
+func (sym *symbol) Value() Value  { return sym.tv.Value() }
+func (sym *symbol) Scope() *Scope { return sym.scope }
 
 func (sym *symbol) QualifiedName() string {
 	return fmt.Sprintf("%s.%s", sym.scope.Module().Name(), sym.Name())
