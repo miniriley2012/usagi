@@ -15,6 +15,7 @@ type Scope struct {
 	comment  string
 
 	parent   *Scope
+	module   *Module
 	children []*Scope
 	symbols  map[string]Symbol
 }
@@ -30,6 +31,7 @@ func NewScope(parent *Scope, pos, end token.Pos, comment string) *Scope {
 	}
 	if parent != nil {
 		parent.children = append(parent.children, s)
+		s.module = parent.module
 	}
 	return s
 }
@@ -41,6 +43,7 @@ func (s *Scope) Insert(symbol Symbol) Symbol {
 		return sym
 	}
 	s.symbols[name] = symbol
+	symbol.setScope(s)
 	return nil
 }
 
@@ -54,6 +57,8 @@ func (s *Scope) Lookup(name string) Symbol {
 	}
 	return nil
 }
+
+func (s *Scope) Module() *Module { return s.module }
 
 func (s *Scope) WriteTo(w io.Writer) (int64, error) {
 	return s.writeTo(w, 0)
@@ -127,9 +132,13 @@ type Symbol interface {
 	Name() string
 	Type() Type
 	Value() Value
+	LinkName() string
+
+	setScope(scope *Scope)
 }
 
 type symbol struct {
+	scope    *Scope
 	name     string
 	linkName string
 	tv       *TypeAndValue
@@ -138,6 +147,20 @@ type symbol struct {
 func (sym *symbol) Name() string { return sym.name }
 func (sym *symbol) Type() Type   { return sym.tv.Type() }
 func (sym *symbol) Value() Value { return sym.tv.Value() }
+
+func (sym *symbol) QualifiedName() string {
+	return fmt.Sprintf("%s.%s", sym.scope.Module().Name(), sym.Name())
+}
+
+func (sym *symbol) LinkName() string {
+	if len(sym.linkName) > 0 {
+		return sym.linkName
+	}
+	qualName := sym.QualifiedName()
+	return fmt.Sprintf("_U%d%s", len(qualName), qualName)
+}
+
+func (sym *symbol) setScope(scope *Scope) { sym.scope = scope }
 
 func (sym *symbol) String() string {
 	var b strings.Builder
@@ -154,11 +177,11 @@ func (sym *symbol) String() string {
 }
 
 func NewSymbol(name string, tv *TypeAndValue) *symbol {
-	return &symbol{name, "", tv}
+	return &symbol{nil, name, "", tv}
 }
 
 func NewSymbolFromValue(name string, value Value) *symbol {
-	return &symbol{name, "", NewTypeAndValue(value.Type(), value)}
+	return &symbol{nil, name, "", NewTypeAndValue(value.Type(), value)}
 }
 
 type TypeAndValue struct {

@@ -24,6 +24,7 @@ func Check(cfg *CheckConfig) (*Module, error) {
 }
 
 type pass struct {
+	scope           *Scope
 	cur             *Scope
 	resultLocation  *symbol
 	info            *Info
@@ -39,12 +40,16 @@ func (p *pass) Apply(moduleAst *ast.Module) (*Module, error) {
 
 func (p *pass) module(m *ast.Module) *Module {
 	scope := NewScope(Universe, m.Pos(), m.End(), fmt.Sprintf("module %q", m.Name))
+	curModule := &Module{name: m.Name, scope: scope}
+	scope.module = curModule
 	p.cur = scope
+	p.scope = scope
 	for _, decl := range m.Decls {
 		p.decl(decl)
 	}
+	p.scope = nil
 	p.cur = nil
-	return &Module{name: m.Name, scope: scope}
+	return curModule
 }
 
 func (p *pass) decl(decl ast.Decl) {
@@ -60,7 +65,7 @@ func (p *pass) binding(b *ast.Binding) {
 	var typeResult *TypeAndValue
 	var valueResult *TypeAndValue
 
-	sym := &symbol{name: b.Name.Name, tv: &TypeAndValue{}}
+	sym := NewSymbol(b.Name.Name, NewTypeAndValue(nil, nil))
 	p.resultLocation = sym
 
 	if b.Type != nil {
