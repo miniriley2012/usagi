@@ -218,6 +218,13 @@ func (p *pass) expr2(expr ast.Expr) *TypeAndValue {
 				return NewTypeAndValue(value.Type(), value)
 			}
 			return NewTypeAndValue(l, nil)
+		case token.Assign:
+			leftType := left.Type()
+			rightType := right.Type()
+			if !rightType.IsAssignableTo(leftType) {
+				panic(fmt.Errorf("%s is not assignable to %s", rightType, leftType))
+			}
+			return NewTypeAndValue(NewIntegerType(false, 0), nil)
 		default:
 			panic(fmt.Sprintf("unexpected token.Type: %#v", expr.Op))
 		}
