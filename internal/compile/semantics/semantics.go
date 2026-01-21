@@ -85,6 +85,10 @@ func (p *pass) binding(b *ast.Binding) {
 		sym.tv.val = valueResult.Value()
 	}
 
+	if p.info != nil && p.info.Uses != nil {
+		p.info.Uses[b.Name] = sym
+	}
+
 	p.resultLocation = nil
 	p.cur.Insert(sym)
 }
@@ -135,6 +139,9 @@ func (p *pass) expr2(expr ast.Expr) *TypeAndValue {
 		}
 		sym := p.cur.Lookup(expr.Name)
 		if sym != nil {
+			if p.info != nil && p.info.Uses != nil {
+				p.info.Uses[expr] = sym
+			}
 			return NewTypeAndValue(sym.Type(), sym.Value())
 		}
 		return nil
