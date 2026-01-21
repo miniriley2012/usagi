@@ -284,6 +284,10 @@ func (p *Parser) stmt() ast.Stmt {
 		return &ast.ExprStmt{X: x}
 	case token.Struct, token.Trait, token.Impl, token.Func:
 		return &ast.DeclStmt{X: p.decl()}
+	case token.Let, token.Const:
+		decl := p.decl()
+		p.expect(token.Semicolon)
+		return &ast.DeclStmt{X: decl}
 	default:
 		p.unexpected("statement")
 		return nil
