@@ -103,7 +103,7 @@ func (p *pass) stmt(stmt ast.Stmt) {
 func (p *pass) expr(expr ast.Expr) *TypeAndValue {
 	tv := p.expr2(expr)
 	if tv.Type() != nil && p.info != nil && p.info.Types != nil {
-		p.info.Types[expr] = tv.Type()
+		p.info.Types[expr] = tv
 	}
 	return tv
 }
@@ -321,7 +321,10 @@ func (m *Module) Name() string { return m.name }
 func (m *Module) Scope() *Scope { return m.scope }
 
 type Info struct {
-	Types map[ast.Expr]Type
+	Types  map[ast.Expr]*TypeAndValue
+	Defs   map[*ast.Identifier]Symbol
+	Uses   map[*ast.Identifier]Symbol
+	Scopes map[ast.Node]*Scope
 }
 
 type Importer interface {

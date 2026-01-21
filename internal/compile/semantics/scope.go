@@ -3,6 +3,7 @@ package semantics
 import (
 	"fmt"
 	"io"
+	"iter"
 	"maps"
 	"slices"
 	"strings"
@@ -59,6 +60,16 @@ func (s *Scope) Lookup(name string) Symbol {
 }
 
 func (s *Scope) Module() *Module { return s.module }
+
+func (s *Scope) Symbols() iter.Seq[Symbol] {
+	return func(yield func(Symbol) bool) {
+		for _, key := range slices.Sorted(maps.Keys(s.symbols)) {
+			if !yield(s.symbols[key]) {
+				return
+			}
+		}
+	}
+}
 
 func (s *Scope) WriteTo(w io.Writer) (int64, error) {
 	return s.writeTo(w, 0)

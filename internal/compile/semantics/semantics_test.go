@@ -6,6 +6,7 @@ import (
 
 	"codeberg.org/rileyq/usagi/internal/compile/ast"
 	"codeberg.org/rileyq/usagi/internal/compile/parser"
+	"codeberg.org/rileyq/usagi/internal/compile/semantics"
 )
 
 const std = `
@@ -61,7 +62,7 @@ func TestSemantics(t *testing.T) {
 	importer.Add("std", stdModule)
 
 	info := Info{
-		Types: map[ast.Expr]Type{},
+		Types: map[ast.Expr]*semantics.TypeAndValue{},
 	}
 	_, _, err = loadModule("main", main, &info, importer)
 	if err != nil {
