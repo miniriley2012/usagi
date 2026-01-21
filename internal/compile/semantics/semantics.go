@@ -38,7 +38,7 @@ func (p *pass) Apply(moduleAst *ast.Module) (*Module, error) {
 }
 
 func (p *pass) module(m *ast.Module) *Module {
-	scope := NewScope(Universe, m.Pos(), m.End(), "module")
+	scope := NewScope(Universe, m.Pos(), m.End(), fmt.Sprintf("module %q", m.Name))
 	p.cur = scope
 	for _, decl := range m.Decls {
 		p.decl(decl)
@@ -134,7 +134,14 @@ func (p *pass) expr2(expr ast.Expr) *TypeAndValue {
 		}
 		return nil
 	case *ast.FuncExpr:
-		funcScope := NewScope(p.cur, token.NoPos, token.NoPos, "func")
+		var comment string
+		if p.resultLocation != nil {
+			comment = fmt.Sprintf("func %q", p.resultLocation.Name())
+		} else {
+			comment = "func"
+		}
+
+		funcScope := NewScope(p.cur, token.NoPos, token.NoPos, comment)
 		p.cur = funcScope
 		defer func() {
 			p.cur = funcScope.parent
